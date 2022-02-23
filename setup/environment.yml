@@ -1,0 +1,22 @@
+name: rnaseqmodel
+channels:
+  - defaults
+dependencies:
+  - pandas
+  - seaborn
+  - keras
+  - tensorflow
+  - scikit-learn
+  - xgboost
+  - tpot
+  - shap
+  - scikit-plot
+  - statsmodels
+  - xlrd
+  - openpyxl
+  - dask
+  - dask-ml
+  - jupyterlab
+  - pathlib
+  - glmnet
+  - matplotlib-venn
