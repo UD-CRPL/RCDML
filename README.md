@@ -6,4 +6,4 @@ The RNA-seq Count Drug-response Machine Learning (RCDML) Workflow is a ML workfl
 
 The ML pipeline was evaluated using RNA-seq count and drug response data available for Acute Myeloid Leukemia (AML) patients and over 100 different drugs as part of the BeatAML project.
 
-For documentation on how to get started with the ML worflow visit the [wiki](https://github.com/UD-CRPL/RCDML/wiki).
+For documentation on how to get started with the ML workflow visit the [wiki](https://github.com/UD-CRPL/RCDML/wiki).
