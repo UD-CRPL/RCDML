@@ -12,22 +12,22 @@ rf_parameters = {
 'max_features': ['auto', 'sqrt'],
 'min_samples_leaf': [1, 2, 4],
 'min_samples_split': [2, 5, 10],
-'n_estimators': [130, 180, 230]}
+'n_estimators': [100, 150, 200, 250, 500, 750, 1000]}
 
 # List of hyperparameters to search for the XGBoost gradient boosting implementation
 gdb_parameters = {
-'max_depth': [6, 10, 15, 20],
-'learning_rate': [0.001, 0.01, 0.1, 0.2, 0,3],
+'max_depth': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, None],
+'learning_rate': [0.001, 0.01, 0.1, 0.2, 0.3],
 'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
 'colsample_bytree': [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
 'colsample_bylevel': [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
 'min_child_weight': [0.5, 1.0, 3.0, 5.0, 7.0, 10.0],
 'gamma': [0, 0.25, 0.5, 1.0],
 'reg_lambda': [0.1, 1.0, 5.0, 10.0, 50.0, 100.0],
-'n_estimators': [100]}
+'n_estimators': [100, 150, 200, 250, 500, 750, 1000]}
 
 # Classification wrapper used to select the correct classifier based on the configuration file selection
-def get_model(classifier):
+def get_model(classifier, hyper_opt):
 
     # Classifier: "rf"
     # Random Forest, scikit-learn
@@ -35,7 +35,8 @@ def get_model(classifier):
         model = RandomForestClassifier()
         # Random Search CV used for Hyperparameter optimization, sets up the operation for
         # going through the list of hyperparameters above and selects best performing model
-        model = RandomizedSearchCV(model, rf_parameters, n_iter=30,
+        if hyper_opt == "random_search":
+            model = RandomizedSearchCV(model, rf_parameters, n_iter=30,
                                     n_jobs=-1, verbose=0, cv=5,
                                     scoring='roc_auc', refit=True, random_state=42)
     # Classifier: "gdb"
@@ -44,7 +45,8 @@ def get_model(classifier):
         model = xgboost.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
         # Random Search CV used for Hyperparameter optimization, sets up the operation for
         # going through the list of hyperparameters above and selects best performing model
-        model = RandomizedSearchCV(model, gdb_parameters, n_iter=30,
+        if hyper_opt == "random_search":
+            model = RandomizedSearchCV(model, gdb_parameters, n_iter=30,
                                             n_jobs=-1, verbose=0, cv=5,
                                             scoring='roc_auc', refit=True, random_state=42)
     else:
@@ -58,8 +60,7 @@ def prepare_dataset(x, y):
     return x, y
 
 # Performs the classifier training using the training dataset
-def model_train(path, x, y, classifier, debug_mode, iteration):
-
+def model_train(path, x, y, classifier, debug_mode, iteration, hyper_opt, best_parameters):
     # DEBUG MODE
     if debug_mode:
         # Saves input training dataset and labels
@@ -69,12 +70,19 @@ def model_train(path, x, y, classifier, debug_mode, iteration):
         y.to_csv(debug_path + "/labels.tsv", sep="\t")
 
     # Selects correct model
-    model = get_model(classifier)
-    # Transforms the dataset for correct scikit-learn format
+    model = get_model(classifier, hyper_opt)
     x, y = prepare_dataset(x, y)
+    if hyper_opt == "none":
+        #print(best_parameters[1])
+        #print(best_parameters)
+        model.set_params(**best_parameters[1])
+        # Transforms the dataset for correct scikit-learn format
     print("CLASSIFIER: " + classifier)
     # Trains the model
     model.fit(x, y)
+
+    if hyper_opt != "none":
+        best_parameters = model.best_params_
 
     # DEBUG MODE
     if debug_mode:
@@ -83,4 +91,4 @@ def model_train(path, x, y, classifier, debug_mode, iteration):
         from joblib import dump, load
         dump(model, debug_path + 'model.joblib')
 
-    return model
+    return model, best_parameters

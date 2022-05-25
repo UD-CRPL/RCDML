@@ -57,6 +57,7 @@ def main():
     dataset_path = parameters['dataset_path']
     run_name = parameters['run_name']
     project = parameters['project']
+    hyper_opt = parameters['hyper_opt']
 
     feature_selection = parameters['feature_selection'].split(',')
 
@@ -101,27 +102,84 @@ def main():
 
     datasets, iterations = val.split_dataset(validation, dataset, labels, train_set_split, iterations)
 
-    for i in feature_selection:
-        for j in classifiers:
-            for k in range(0, iterations):
-                dp.make_result_dir(result_path + date + "/" + validation + "/" + i + "/" + j + "/" + str(k) + "/")
+    if validation == "cv_and_test":
 
-    print("PERFORMING FEATURE SELECTION: ")
-    datasets = {i:[fs.feature_selection(result_path + date + "/" + validation + "/", i, j, datasets, labels, feature_size, classifiers, feature_counter, debug['feature_selection'], feature_selection_parameters, drug_name) for j in range(0, iterations)] for i in feature_selection}
-
-    print("PERFORMING MODEL TRAINING: ")
-    models = {j: {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + j + "/", datasets[j][i]['x_train'], datasets[j][i]['y_train'], classifier, debug['classification'], i) for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
-    print("FINISHED TRAINING MODELS")
-
-    print("GATHERING RESULTS")
-    results = {j: {classifier: [val.validate_model(models[j][classifier][i], datasets[j][i]['x_test'], datasets[j][i]['y_test'], 0.50, validation) for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
-    print("FINISHED GATHERING")
-    val.save_results(result_path + date, validation, feature_selection, classifiers, iterations, results, models, datasets, labels, feature_selection_parameters, drug_name)
-
-    if save_fc:
+    # CV HAPPENS FIRST
         for i in feature_selection:
-            for classifier in classifiers:
-                save_feature_counter(result_path, i, classifier, date, validation, feature_counter, feature_size, debug['feature_counter'])
+            for j in classifiers:
+                for k in range(0, iterations):
+                    dp.make_result_dir(result_path + date + "/" + validation + "/" + i + "/" + j + "/" + str(k) + "/")
+
+        print("CV - PERFORMING FEATURE SELECTION: ")
+        datasets_cv = {i:[fs.feature_selection(result_path + date + "/" + validation + "/", i, j, datasets, labels, feature_size, classifiers, feature_counter, debug['feature_selection'], feature_selection_parameters, drug_name) for j in range(0, iterations)] for i in feature_selection}
+
+        print("CV - PERFORMING MODEL TRAINING: ")
+        best_parameters = {}
+        models = {j: {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + j + "/", datasets_cv[j][i]['x_train'], datasets_cv[j][i]['y_train'], classifier, debug['classification'], i, hyper_opt, best_parameters) for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
+        print("CV - FINISHED TRAINING MODELS")
+
+        print("CV - GATHERING RESULTS")
+        cv_results = {j: {classifier: [val.validate_model(models[j][classifier][i][0], datasets_cv[j][i]['x_test'], datasets_cv[j][i]['y_test'], 0.50, "cv") for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
+        #print("CV - FINISHED GATHERING")
+        #val.save_results(result_path + date, "cv", feature_selection, classifiers, iterations, results, models, datasets, labels, feature_selection_parameters, drug_name)
+
+        if save_fc:
+            for i in feature_selection:
+                for classifier in classifiers:
+                    save_feature_counter(result_path, i, classifier, date, validation, feature_counter, feature_size, debug['feature_counter'])
+        print("CV - SAVED FEATURE COUNTER")
+
+     # INDEPENDENT TEST SET
+        for i in feature_selection:
+            for j in classifiers:
+#                for k in range(0, iterations):
+                dp.make_result_dir(result_path + date + "/" + validation + "/" + i + "/" + j + "/hold_out/")
+
+        print("HOLD-OUT - PERFORMING FEATURE SELECTION: ")
+        print(datasets)
+        datasets = {i:fs.feature_selection(result_path + date + "/" + validation + "/", i, "hold_out", datasets['hold_out'], labels, feature_size, classifiers, feature_counter, debug['feature_selection'], feature_selection_parameters, drug_name) for i in feature_selection}
+
+        print("HOLD-OUT - PERFORMING MODEL TRAINING: ")
+
+        models = {j: {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + j + "/", datasets[j]['x_train'], datasets[j]['y_train'], classifier, debug['classification'], "hold_out", "none", models[j][classifier][i])for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
+        holdout_results = {j: {classifier: [val.validate_model(models[j][classifier][i][0], datasets[j]['x_test'], datasets[j]['y_test'], 0.50, validation) for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
+
+        models, holdout_results = val.pick_top_performer(models, holdout_results, classifiers, feature_selection, iterations)
+
+        print("FINISHED TRAINING MODELS")
+        print("HOLD-OUT - FINISHED GATHERING RESULTS")
+        results = {"cv": cv_results, "holdout":holdout_results}
+        val.save_results(result_path + date, validation, feature_selection, classifiers, iterations, results, models, datasets, labels, feature_selection_parameters, drug_name)
+
+        if save_fc:
+            for i in feature_selection:
+                for classifier in classifiers:
+                    save_feature_counter(result_path, i, classifier, date, validation, feature_counter, feature_size, debug['feature_counter'])
+        print("HOLD-OUT - SAVED FEATURE COUNTER")
+
+    else:
+        for i in feature_selection:
+            for j in classifiers:
+                for k in range(0, iterations):
+                    dp.make_result_dir(result_path + date + "/" + validation + "/" + i + "/" + j + "/" + str(k) + "/")
+
+        print("PERFORMING FEATURE SELECTION: ")
+        datasets = {i:[fs.feature_selection(result_path + date + "/" + validation + "/", i, j, datasets, labels, feature_size, classifiers, feature_counter, debug['feature_selection'], feature_selection_parameters, drug_name) for j in range(0, iterations)] for i in feature_selection}
+
+        print("PERFORMING MODEL TRAINING: ")
+        best_parameters = {}
+        models, best_parameters = {j: {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + j + "/", datasets[j][i]['x_train'], datasets[j][i]['y_train'], classifier, debug['classification'], i, hyper_opt, best_parameters) for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
+        print("FINISHED TRAINING MODELS")
+
+        print("GATHERING RESULTS")
+        results = {j: {classifier: [val.validate_model(models[j][classifier][i][0], datasets[j][i]['x_test'], datasets[j][i]['y_test'], 0.50, validation) for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
+        print("FINISHED GATHERING")
+        val.save_results(result_path + date, validation, feature_selection, classifiers, iterations, results, models, datasets, labels, feature_selection_parameters, drug_name)
+
+        if save_fc:
+            for i in feature_selection:
+                for classifier in classifiers:
+                    save_feature_counter(result_path, i, classifier, date, validation, feature_counter, feature_size, debug['feature_counter'])
         print("SAVED FEATURE COUNTER")
     print("PIPELINE ENDS")
     return 0

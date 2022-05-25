@@ -28,9 +28,33 @@ def split_dataset(mode, dataset, labels, split, iterations):
     # Leave-One-Out
     elif mode == 'loo':
         dataset, iterations = leave_one_out(dataset, labels, iterations)
+    elif mode == 'cv_and_test':
+        dataset, iterations = cv_and_test(dataset, labels, split, iterations)
     else:
         sys.exit("ERROR: Unrecognized validation technique in configuration file")
     return dataset, iterations
+
+# Validation mode: "cv_and_test"
+# Divides the dataset by CV "iterations"-folds
+# Training set -> Rest of Dataset, Test set -> Fold X
+def cv_and_test(X, y, split, iterations):
+    train_data, test_data, train_labels, test_labels = train_test_split(X.T, y.set_index('SID')['GROUP'], test_size=split, shuffle=True)
+    X_train_list, X_test_list, y_train_list, y_test_list = [], [], [], []
+    # Sets up scikit-learn iterator for splitting the dataset
+    kf = StratifiedKFold(n_splits=iterations)
+    for train_index, test_index in kf.split(train_data, train_labels):
+        X_train, X_test = train_data.iloc[train_index], train_data.iloc[test_index]
+        y_train, y_test = train_labels.iloc[train_index], train_labels.iloc[test_index]
+        X_train = X_train.T
+        X_test = X_test.T
+        X_train_list.append(X_train)
+        X_test_list.append(X_test)
+        y_train_list.append(y_train)
+        y_test_list.append(y_test)
+    iterations = kf.get_n_splits(train_data, train_labels)
+    hold_out = {'x_train':train_data.T,'x_test':test_data.T,'y_train':train_labels,'y_test':test_labels}
+    dict = {'x_train':X_train_list,'x_test':X_test_list,'y_train':y_train_list,'y_test':y_test_list, 'hold_out':hold_out}
+    return dict, iterations
 
 # Validation mode: "cv"
 # Divides the dataset by CV "iterations"-folds
@@ -204,21 +228,50 @@ def mlpipeline_plot_roc(result_path, x, y, auc, classifier, feature_selection):
 def mlpipeline_plot_cm(result_path, mode, model, x_test, y_test, iteration):
     class_names = ['Negative Cohort','Positive Cohort']
 
-    # Since results are stored differently there are two versions of the code that plots the matrix
-    if mode == 'loo' or mode == 'cv':
+    # Since results are stored differently depending on validation type there are two versions of the code that plots the matrix
+    if mode == 'loo' or mode == 'cv' or mode == "cv_and_test":
+        print(x_test)
+        print(y_test)
+        print(len(x_test))
+        print(len(y_test))
+        #x_test, y_test = cl.prepare_dataset(x_test, y_test)
         cm = confusion_matrix(x_test, y_test, labels=[0, 1])
         disp = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels=class_names)
         disp = disp.plot(cmap=plt.cm.Blues, colorbar = False)
     else:
         x_test, y_test = cl.prepare_dataset(x_test, y_test)
-        x_test = x_test.apply(pd.to_numeric)
+        if iteration != "hold_out":
+            x_test = x_test.apply(pd.to_numeric)
         disp = plot_confusion_matrix(model, x_test, y_test,
                                      display_labels=class_names,
                                      cmap=plt.cm.Blues, colorbar = False)
-    disp.ax_.set_title('Confusion Matrix Iteration: ' +  str(iteration))
+    if iteration == "hold_out":
+        disp.ax_.set_title('Confusion Matrix Iteration: ' +  iteration)
+    else:
+        disp.ax_.set_title('Confusion Matrix Iteration: ' +  str(iteration))
     plt.savefig(result_path + "cm.png")
     plt.clf()
     return
+
+def pick_top_performer(models, results, classifiers, feature_selection, iterations):
+    best_models = {}
+    best_results = {}
+    top_performer = -1
+    for fs in feature_selection:
+        best_models_2 = {}
+        best_results_2 = {}
+        for classifier in classifiers:
+            for i in range(0, iterations):
+                score = results[fs][classifier][i]['roc']
+                if score > top_performer:
+                    model = models[fs][classifier][i]
+                    result = results[fs][classifier][i]
+                    top_performer = score
+            models_inside_df[classifier] = model
+            results_inside_df[classifier] = result
+        best_models[fs] = models_inside_df
+        best_results[fs] = results_inside_df
+    return best_models, best_results
 
 # Saves the ROC Curve data points
 def save_roc(result_path, fpr, tpr, thresholds):
@@ -329,6 +382,36 @@ def save_results(result_path, mode, feature_selection, classifiers, iterations, 
                 mlpipeline_plot_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/", fpr, tpr, roc, classifier, i)
                 save_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/", fpr, tpr, thresholds)
                 mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/", mode, models, true_label, pred, 0)
+
+    elif mode == "cv_and_test":
+
+        for i in feature_selection:
+            for classifier in classifiers:
+                # CV
+                result = pd.DataFrame(results["cv"][i][classifier])
+                true_label = []
+                pred_proba = []
+                pred = []
+                for j in range(0, iterations):
+                    true_label.extend(result['true_label'][j])
+                    pred_proba.extend(result['pred_prob'][j])
+                    pred.extend(result['pred'][j])
+                    if i == 'swap':
+                        plot_venn_diagram(result_path + "/" + mode + "/" + i + "/" + classifier + "/", project_info, j, drug_name)
+                fpr, tpr, thresholds = roc_curve(true_label, pred_proba)
+                roc = roc_auc_score(true_label, pred_proba)
+                result.to_csv(result_path + "/" + mode + "/" + i + "/" + classifier + "/results.tsv", sep='\t', index = False)
+                mlpipeline_plot_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/", fpr, tpr, roc, classifier, i)
+                save_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/", fpr, tpr, thresholds)
+                mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/", "cv", models, true_label, pred, 0)
+
+                #hold_out
+                thresholds = make_thresholds(10000)
+                mlpipeline_plot_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", results["holdout"][i][classifier]['fpr'], results["holdout"][i][classifier]['tpr'],results["holdout"][i][classifier]['roc'], classifier, i)
+                save_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", results["holdout"][i][classifier]['fpr'], results["holdout"][i][classifier]['tpr'], thresholds)
+                mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", mode, models[i][classifier][0], results["holdout"][i][classifier]['pred'], datasets[i]["y_test"], "hold_out")
+                #individual_sample_report(results, datasets, i, classifier, iterations, labels, result_path + "/" + mode + "/" + i + "/" + classifier + "/")
+
     else:
         for i in feature_selection:
             for classifier in classifiers:
@@ -336,6 +419,6 @@ def save_results(result_path, mode, feature_selection, classifiers, iterations, 
 
                     mlpipeline_plot_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/" + str(j) + "/", results[i][classifier][j]['fpr'], results[i][classifier][j]['tpr'],results[i][classifier][0]['roc'], classifier, i)
                     save_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/" + str(j) + "/", results[i][classifier][j]['fpr'], results[i][classifier][j]['tpr'], thresholds)
-                    mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/" + str(j) + "/", mode, models[i][classifier][j], datasets[i][j]["x_test"], datasets[i][j]["y_test"], j)
+                    mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/" + str(j) + "/", mode, models[i][classifier][j][0], datasets[i][j]["x_test"], datasets[i][j]["y_test"], j)
                 individual_sample_report(results, datasets, i, classifier, iterations, labels, result_path + "/" + mode + "/" + i + "/" + classifier + "/")
     return

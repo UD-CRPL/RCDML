@@ -10,77 +10,173 @@ import sys
 # Feature selection wrapper, chooses the correct feature selection technique based on the configuration file parameters
 def feature_selection(path, fs, iteration, input, labels, feature_size, classifiers, feature_counter, debug_mode, project_info, drug_name):
 
-    total_iterations = len(input["y_train"])
+    if iteration == "hold_out":
 
-    # DEBUG MODE
-    if debug_mode:
+        #total_iterations = len(input["y_train"])
 
-        # SAVES THE INPUT OF THE FEATURE SELECTION TECHNIQUE AND THE FEATURE COUNTER
-        debug_path = path + fs + "/debug/" + str(iteration) + "/"
-        dp.make_result_dir(debug_path)
-        x["x_train"][iteration].to_csv(debug_path + "input_dataset.tsv", sep="\t")
-        x["y_train"][iteration].to_csv(debug_path + "labels.tsv", sep="\t")
-        debug_feature_counter = pd.DataFrame(feature_counter.items(), columns=["FEATURE", "FREQUENCY"])
-        debug_feature_counter = debug_feature_counter.sort_values(by=['FREQUENCY'], ascending=False)
-        debug_feature_counter.to_csv(debug_path + "input_feature_counter.tsv", index = False, sep="\t")
+        # DEBUG MODE
+        if debug_mode:
 
-        # SHAPLEY VALUE FEATURE SELECTION
-    elif fs == 'shap':
-        print("PERFORMING SHAP: " + str(iteration) + "/" + str(total_iterations))
-        dataset = shapley(path + fs + "/" + classifiers[0] + "/" + str(iteration), input["x_train"][iteration], input["y_train"][iteration], feature_size, 1)
+            # SAVES THE INPUT OF THE FEATURE SELECTION TECHNIQUE AND THE FEATURE COUNTER
+            debug_path = path + fs + "/debug/" + iteration + "/"
+            dp.make_result_dir(debug_path)
+            input["x_train"].to_csv(debug_path + "input_dataset.tsv", sep="\t")
+            input["y_train"].to_csv(debug_path + "labels.tsv", sep="\t")
+            debug_feature_counter = pd.DataFrame(feature_counter.items(), columns=["FEATURE", "FREQUENCY"])
+            debug_feature_counter = debug_feature_counter.sort_values(by=['FREQUENCY'], ascending=False)
+            debug_feature_counter.to_csv(debug_path + "input_feature_counter.tsv", index = False, sep="\t")
 
-        # PRINCIPAL COMPONENT ANALYSIS
-    elif fs == 'pca':
-        print("PERFORMING PCA: " + str(iteration) + "/" + str(total_iterations))
-        dataset, datatest = principal_component_analysis(input["x_train"][iteration], input["x_test"][iteration], feature_size)
+            # SHAPLEY VALUE FEATURE SELECTION
+        if fs == 'shap':
+            print("PERFORMING SHAP: ")
+            dataset = shapley(path + fs + "/" + classifiers[0] + "/" + iteration, input["x_train"], input["y_train"], feature_size, 1)
 
-        # DIFFERENTIAL GENE EXPRESSION ANALYSIS
-    elif fs == 'dge':
-        print("PERFORMING DGE: " + str(iteration) + "/" + str(total_iterations))
-        dataset = dge(path, input["x_train"][iteration].T, input["y_train"][iteration], drug_name, project_info)
+            # PRINCIPAL COMPONENT ANALYSIS
+        elif fs == 'pca':
+            print("PERFORMING PCA: ")
+            dataset, datatest = principal_component_analysis(input["x_train"], input["x_test"], feature_size)
 
-        # FEATURE SWAPPING EXPERIMENT
-    elif fs == 'swap':
-        print("PERFORMING FEATURE SWAPPING: " + str(iteration) + "/" + str(total_iterations))
-        dataset = from_feature_list(path, input["x_train"][iteration].T, input["y_train"][iteration], iteration, project_info)
+            # DIFFERENTIAL GENE EXPRESSION ANALYSIS
+        elif fs == 'dge':
+            print("PERFORMING DGE: ")
+            dataset = dge(path, input["x_train"].T, input["y_train"], drug_name, project_info)
 
-        # SELECT RANDOM FEATURES
-    elif fs == 'random':
-        print("SELECTING RANDOM FEATURES: " + str(iteration) + "/" + str(total_iterations))
-        dataset = random_selected_features(input["x_train"][iteration], feature_size)
+            # FEATURE SWAPPING EXPERIMENT
+        elif fs == 'swap':
+            print("PERFORMING FEATURE SWAPPING: ")
+            dataset = from_feature_list(path, input["x_train"].T, input["y_train"], iteration, project_info)
 
-        # NO FEATURE SELECTION
-    elif fs == 'none':
-        print("NO FEATURE SELECTION: " + str(iteration) + "/" + str(total_iterations))
-        dataset = input["x_train"][iteration].T
+            # SELECT RANDOM FEATURES
+        elif fs == 'random':
+            print("SELECTING RANDOM FEATURES: ")
+            dataset = random_selected_features(input["x_train"], feature_size)
+            # USING SHAP, PCA, AND DGE TO SELECT FEATURES AND THEN USING ALL THE FEATURES FOUND AS THE NEW DATASET
+        elif fs == 'all':
+            print("SELECTING AND COMBINING FEATURES USING ALL FEATURE REDUCTION TOOLS: ")
+
+            shap_dataset = shapley(path + fs + "/" + classifiers[0] + "/" + iteration, input["x_train"], input["y_train"], feature_size, 1)
+            dge_dataset = dge(path, input["x_train"].T, input["y_train"], drug_name, project_info)
+            shap_features = set(shap_dataset.columns)
+            dge_features = set(dge_dataset.columns)
+            all_features = shap_features | dge_features
+            dataset = input["x_train"].loc[input["x_train"].index.isin(all_features)].T
+            print(dataset)
+
+        elif fs == 'none':
+            print("NO FEATURE SELECTION: ")
+            dataset = input["x_train"].T
+        else:
+            sys.exit("ERROR: Unrecognized Feature Selection technique in configuration file")
+
+            ## PCA does not output the features the same way as the other FS techniques
+        if fs == 'pca':
+            dict = {"x_train": dataset.T, "x_test": datatest.T,  "y_train": input["y_train"], "y_test": input["y_test"]}
+        else:
+            # Filter through the dataset to save only the data rows that correspond to the features selecteed
+            features = dataset.columns
+            dict = {"x_train": input["x_train"].loc[input["x_train"].index.isin(features)], "x_test": input["x_test"].iloc[input["x_test"].index.isin(features)],  "y_train": input["y_train"], "y_test": input["y_test"]}
+
+            # adds to the counter for each feature selected
+            add_to_feature_counter(features, feature_counter)
+
+            # Saves the list of features/genes as a tsv file
+            for classifier in classifiers:
+                with open(path + fs + "/" + classifier + "/" + iteration + "/genes_selected.tsv", 'w') as file:
+                    for row in features:
+                        s = "".join(map(str, row))
+                        file.write(s+'\n')
+
+        # DEBUG MODE
+        if debug_mode:
+            # SAVES THE OUTPUT OF THE FEATURE SELECTION TECHNIQUE AND THE MODIFIED FEATURE COUNTER
+            debug_feature_counter = pd.DataFrame(feature_counter.items(), columns=["FEATURE", "FREQUENCY"])
+            debug_feature_counter = debug_feature_counter.sort_values(by=['FREQUENCY'], ascending=False)
+            debug_feature_counter.to_csv(debug_path + "output_feature_counter.tsv", index = False, sep="\t")
+            dataset.to_csv(debug_path + "/output_dataset.tsv", sep='\t')
+
     else:
-        sys.exit("ERROR: Unrecognized Feature Selection technique in configuration file")
 
-        ## PCA does not output the features the same way as the other FS techniques
-    if fs == 'pca':
-        dict = {"x_train": dataset.T, "x_test": datatest.T,  "y_train": input["y_train"][iteration], "y_test": input["y_test"][iteration]}
-    else:
-        # Filter through the dataset to save only the data rows that correspond to the features selecteed
-        features = dataset.columns
-        dict = {"x_train": input["x_train"][iteration].loc[input["x_train"][iteration].index.isin(features)], "x_test": input["x_test"][iteration].iloc[input["x_test"][iteration].index.isin(features)],  "y_train": input["y_train"][iteration], "y_test": input["y_test"][iteration]}
+        total_iterations = len(input["y_train"])
 
-        # adds to the counter for each feature selected
-        add_to_feature_counter(features, feature_counter)
+        # DEBUG MODE
+        if debug_mode:
 
-        # Saves the list of features/genes as a tsv file
-        for classifier in classifiers:
-            with open(path + fs + "/" + classifier + "/" + str(iteration) + "/genes_selected.tsv", 'w') as file:
-                for row in features:
-                    s = "".join(map(str, row))
-                    file.write(s+'\n')
+            # SAVES THE INPUT OF THE FEATURE SELECTION TECHNIQUE AND THE FEATURE COUNTER
+            debug_path = path + fs + "/debug/" + str(iteration) + "/"
+            dp.make_result_dir(debug_path)
+            input["x_train"][iteration].to_csv(debug_path + "input_dataset.tsv", sep="\t")
+            input["y_train"][iteration].to_csv(debug_path + "labels.tsv", sep="\t")
+            debug_feature_counter = pd.DataFrame(feature_counter.items(), columns=["FEATURE", "FREQUENCY"])
+            debug_feature_counter = debug_feature_counter.sort_values(by=['FREQUENCY'], ascending=False)
+            debug_feature_counter.to_csv(debug_path + "input_feature_counter.tsv", index = False, sep="\t")
 
-    # DEBUG MODE
-    if debug_mode:
-        # SAVES THE OUTPUT OF THE FEATURE SELECTION TECHNIQUE AND THE MODIFIED FEATURE COUNTER
-        debug_feature_counter = pd.DataFrame(feature_counter.items(), columns=["FEATURE", "FREQUENCY"])
-        debug_feature_counter = debug_feature_counter.sort_values(by=['FREQUENCY'], ascending=False)
-        debug_feature_counter.to_csv(debug_path + "output_feature_counter.tsv", index = False, sep="\t")
-        dataset.to_csv(debug_path + "/output_dataset.tsv", sep='\t')
+            # SHAPLEY VALUE FEATURE SELECTION
+        if fs == 'shap':
+            print("PERFORMING SHAP: " + str(iteration) + "/" + str(total_iterations))
+            dataset = shapley(path + fs + "/" + classifiers[0] + "/" + str(iteration), input["x_train"][iteration], input["y_train"][iteration], feature_size, 1)
+
+            # PRINCIPAL COMPONENT ANALYSIS
+        elif fs == 'pca':
+            print("PERFORMING PCA: " + str(iteration) + "/" + str(total_iterations))
+            dataset, datatest = principal_component_analysis(input["x_train"][iteration], input["x_test"][iteration], feature_size)
+
+            # DIFFERENTIAL GENE EXPRESSION ANALYSIS
+        elif fs == 'dge':
+            print("PERFORMING DGE: " + str(iteration) + "/" + str(total_iterations))
+            dataset = dge(path, input["x_train"][iteration].T, input["y_train"][iteration], drug_name, project_info)
+
+            # FEATURE SWAPPING EXPERIMENT
+        elif fs == 'swap':
+            print("PERFORMING FEATURE SWAPPING: " + str(iteration) + "/" + str(total_iterations))
+            dataset = from_feature_list(path, input["x_train"][iteration].T, input["y_train"][iteration], iteration, project_info)
+
+            # SELECT RANDOM FEATURES
+        elif fs == 'random':
+            print("SELECTING RANDOM FEATURES: " + str(iteration) + "/" + str(total_iterations))
+            dataset = random_selected_features(input["x_train"][iteration], feature_size)
+            # USING SHAP, PCA, AND DGE TO SELECT FEATURES AND THEN USING ALL THE FEATURES FOUND AS THE NEW DATASET
+        elif fs == 'all':
+            print("SELECTING AND COMBINING FEATURES USING ALL FEATURE REDUCTION TOOLS: " + str(iteration) + "/" + str(total_iterations))
+
+            shap_dataset = shapley(path + fs + "/" + classifiers[0] + "/" + str(iteration), input["x_train"][iteration], input["y_train"][iteration], feature_size, 1)
+            dge_dataset = dge(path, input["x_train"][iteration].T, input["y_train"][iteration], drug_name, project_info)
+            shap_features = set(shap_dataset.columns)
+            dge_features = set(dge_dataset.columns)
+            all_features = shap_features | dge_features
+            dataset = input["x_train"][iteration].loc[input["x_train"][iteration].index.isin(all_features)].T
+            print(dataset)
+
+        elif fs == 'none':
+            print("NO FEATURE SELECTION: " + str(iteration) + "/" + str(total_iterations))
+            dataset = input["x_train"][iteration].T
+        else:
+            sys.exit("ERROR: Unrecognized Feature Selection technique in configuration file")
+
+            ## PCA does not output the features the same way as the other FS techniques
+        if fs == 'pca':
+            dict = {"x_train": dataset.T, "x_test": datatest.T,  "y_train": input["y_train"][iteration], "y_test": input["y_test"][iteration]}
+        else:
+            # Filter through the dataset to save only the data rows that correspond to the features selecteed
+            features = dataset.columns
+            dict = {"x_train": input["x_train"][iteration].loc[input["x_train"][iteration].index.isin(features)], "x_test": input["x_test"][iteration].iloc[input["x_test"][iteration].index.isin(features)],  "y_train": input["y_train"][iteration], "y_test": input["y_test"][iteration]}
+
+            # adds to the counter for each feature selected
+            add_to_feature_counter(features, feature_counter)
+
+            # Saves the list of features/genes as a tsv file
+            for classifier in classifiers:
+                with open(path + fs + "/" + classifier + "/" + str(iteration) + "/genes_selected.tsv", 'w') as file:
+                    for row in features:
+                        s = "".join(map(str, row))
+                        file.write(s+'\n')
+
+        # DEBUG MODE
+        if debug_mode:
+            # SAVES THE OUTPUT OF THE FEATURE SELECTION TECHNIQUE AND THE MODIFIED FEATURE COUNTER
+            debug_feature_counter = pd.DataFrame(feature_counter.items(), columns=["FEATURE", "FREQUENCY"])
+            debug_feature_counter = debug_feature_counter.sort_values(by=['FREQUENCY'], ascending=False)
+            debug_feature_counter.to_csv(debug_path + "output_feature_counter.tsv", index = False, sep="\t")
+            dataset.to_csv(debug_path + "/output_dataset.tsv", sep='\t')
 
     return dict
 
