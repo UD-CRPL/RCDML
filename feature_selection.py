@@ -39,7 +39,7 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             # DIFFERENTIAL GENE EXPRESSION ANALYSIS
         elif fs == 'dge':
             print("PERFORMING DGE: ")
-            dataset = dge(path, input["x_train"].T, input["y_train"], drug_name, project_info)
+            dataset = dge(path + fs + "/" + classifiers[0] + "/" + iteration, input["x_train"].T, input["y_train"], drug_name, project_info)
 
             # FEATURE SWAPPING EXPERIMENT
         elif fs == 'swap':
@@ -123,7 +123,7 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             # DIFFERENTIAL GENE EXPRESSION ANALYSIS
         elif fs == 'dge':
             print("PERFORMING DGE: " + str(iteration) + "/" + str(total_iterations))
-            dataset = dge(path, input["x_train"][iteration].T, input["y_train"][iteration], drug_name, project_info)
+            dataset = dge(path + fs + "/" + classifiers[0] + "/" + str(iteration) + "/", input["x_train"][iteration].T, input["y_train"][iteration], drug_name, project_info)
 
             # FEATURE SWAPPING EXPERIMENT
         elif fs == 'swap':
@@ -198,7 +198,49 @@ def from_feature_list(path, dataset, labels, iteration, project_info):
 # Feature Selection: "dge"
 # Loads the features/genes that were selected by the DGE analysis
 def dge(path, dataset, labels, drug_name, project_info):
-    feature_set = pd.read_csv(project_info['dge_path'] + drug_name + '_genes_selected.tsv', names=[drug_name])
+
+    # Generate DGE label file used in for the limma R script
+    dge_labels_file = project_info['dge_path'] + drug_name + '_dge_input.txt'
+    dge_labels = labels.copy()
+    dge_labels = dge_labels.reset_index()
+    dge_labels["SID"] = [s.replace('-','X') for s in dge_labels["SID"]]
+    dge_labels['SID'] = 'X' + dge_labels['SID'].astype(str)
+    dge_labels = dge_labels.rename(columns = {'SID':'Sample'})
+    dge_labels = dge_labels.rename(columns = {'GROUP':'high'})
+    dge_labels['low'] = np.logical_xor(dge_labels['high'],1).astype(int)
+    dge_labels.to_csv(dge_labels_file, index=False, sep="\t")
+    #print(dge_labels)
+
+    import sys
+    import subprocess
+
+    dge_script  = "./beataml_deg_commandline.R"
+    workdir   = "--dir=" + project_info['dge_path']
+    file = "--file=" + dge_labels_file
+    name = "--name=" + path + drug_name
+    sys.stdout.flush()
+    jobargz = []
+    jobargz.append(file)
+    jobargz.append(name)
+    jobargz.append(workdir)
+    runlaunch = subprocess.Popen([project_info['dge_path'] + dge_script] + jobargz)
+    runlaunch.wait()
+
+    limma_script  = "limma.py"
+    dataset_path = "--dataset=" + project_info['dataset_path']
+    dname = "--drug=" + drug_name
+    result_path = "--dir=" + path
+    sys.stdout.flush()
+    jobargz = []
+    jobargz.append(dataset_path)
+    jobargz.append(result_path)
+    jobargz.append(dname)
+    #jobargz.append(workdir)
+    runlaunch = subprocess.Popen(["python", project_info['dge_path'] + limma_script] + jobargz)
+    runlaunch.wait()
+
+    feature_set = pd.read_csv(path + drug_name + '_genes_selected.tsv', names=[drug_name])
+    #feature_set = pd.read_csv(project_info['dge_path'] + drug_name + '_genes_selected.tsv', names=[drug_name])
     filtered = dataset[feature_set[drug_name].values]
     return filtered
 

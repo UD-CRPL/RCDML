@@ -93,7 +93,8 @@ def auc_to_binary(value, q1, q3):
 ## Loads the RNA Sequence Data Matrix from the BeatAML Project
 def load_dataset_beatAML(url, normalization):
     if normalization == "cpm":
-        dataset = pd.read_excel(url + "variants_BeatAML.xlsx", sheet_name="Table S9-Gene Counts CPM", dtype = 'float64', converters = {'Gene': str, 'Symbol': str})
+        #dataset = pd.read_excel(url + "variants_BeatAML.xlsx", sheet_name="Table S9-Gene Counts CPM", dtype = 'float64', converters = {'Gene': str, 'Symbol': str})
+        dataset = pd.read_csv(url + "read_count_matrix.txt", dtype = 'float64', converters = {'Gene': str, 'Symbol': str}, sep="\t")
     elif normalization == "rpkm":
         dataset = pd.read_excel(url + "variants_BeatAML.xlsx", sheet_name="Table S8-Gene Counts RPKM", dtype = 'float64', converters = {'Gene': str, 'Symbol': str})
     else:
@@ -104,6 +105,7 @@ def load_dataset_beatAML(url, normalization):
     # Drops symbol column since gene ID is already being used to track back
     dataset = dataset.drop('Symbol', axis = 1)
     # Gets the list of sample IDs from the dataset
+    dataset.columns = [s.replace('X','-') for s in dataset.columns]
     samples = dataset.columns
     return dataset, samples
 

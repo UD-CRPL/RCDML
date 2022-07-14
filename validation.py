@@ -141,7 +141,7 @@ def validate_model(model, x, y, threshold, mode):
     # Assigns class label to each test case based on a threshold
     prediction = assign_class(prediction_proba, threshold)
 
-    if mode == 'loo' or mode == 'cv':
+    if mode == 'loo' or mode == 'cv' or mode == 'cv_and_test':
         dict = {'sample':y.index,'true_label':y.values, 'pred':prediction, 'pred_prob': prediction_proba}
     else:
         # Calculates the False Positive Rate (FPR) and True Positive Rate (TPR) of the test case probability predictions
@@ -253,19 +253,19 @@ def mlpipeline_plot_cm(result_path, mode, model, x_test, y_test, iteration):
     plt.clf()
     return
 
-def pick_top_performer(models, results, classifiers, feature_selection, iterations):
+def pick_top_performer(models, cv_results, holdout_results, classifiers, feature_selection, iterations):
     best_models = {}
     best_results = {}
     top_performer = -1
     for fs in feature_selection:
-        best_models_2 = {}
-        best_results_2 = {}
+        models_inside_df = {}
+        results_inside_df = {}
         for classifier in classifiers:
             for i in range(0, iterations):
-                score = results[fs][classifier][i]['roc']
+                score = roc_score = roc_auc_score(cv_results[fs][classifier][i]['true_label'], cv_results[fs][classifier][i]['pred_prob'])
                 if score > top_performer:
                     model = models[fs][classifier][i]
-                    result = results[fs][classifier][i]
+                    result = holdout_results[fs][classifier][i]
                     top_performer = score
             models_inside_df[classifier] = model
             results_inside_df[classifier] = result
@@ -407,9 +407,13 @@ def save_results(result_path, mode, feature_selection, classifiers, iterations, 
 
                 #hold_out
                 thresholds = make_thresholds(10000)
-                mlpipeline_plot_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", results["holdout"][i][classifier]['fpr'], results["holdout"][i][classifier]['tpr'],results["holdout"][i][classifier]['roc'], classifier, i)
-                save_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", results["holdout"][i][classifier]['fpr'], results["holdout"][i][classifier]['tpr'], thresholds)
-                mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", mode, models[i][classifier][0], results["holdout"][i][classifier]['pred'], datasets[i]["y_test"], "hold_out")
+                result = pd.DataFrame(results["holdout"][i][classifier])
+                roc = roc_auc_score(results["holdout"][i][classifier]['true_label'], results["holdout"][i][classifier]['pred_prob'])
+                fpr, tpr, thresholds = roc_curve(results["holdout"][i][classifier]["true_label"], results["holdout"][i][classifier]["pred_prob"])#result = result.T
+                result.to_csv(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/results.tsv", sep='\t', index = False)
+                mlpipeline_plot_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", fpr, tpr, roc, classifier, i)
+                save_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", fpr, tpr, thresholds)
+                mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", mode, models[i][classifier][0], results["holdout"][i][classifier]['true_label'], results["holdout"][i][classifier]['pred'], "hold_out")
                 #individual_sample_report(results, datasets, i, classifier, iterations, labels, result_path + "/" + mode + "/" + i + "/" + classifier + "/")
 
     else:

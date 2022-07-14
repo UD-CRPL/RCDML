@@ -71,7 +71,7 @@ def main():
     iterations = int(parameters['validation_iterations'])
     normalization = parameters['normalization']
 
-    fs_keys = ['dge_path', 'swapped_label', 'drug_feature_path', 'swapped_path']
+    fs_keys = ['dataset_path', 'dge_path', 'swapped_label', 'drug_feature_path', 'swapped_path']
     feature_selection_parameters = {key: parameters[key] for key in fs_keys}
 
     save_fc = int(parameters['feature_counter'])
@@ -144,7 +144,7 @@ def main():
         models = {j: {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + j + "/", datasets[j]['x_train'], datasets[j]['y_train'], classifier, debug['classification'], "hold_out", "none", models[j][classifier][i])for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
         holdout_results = {j: {classifier: [val.validate_model(models[j][classifier][i][0], datasets[j]['x_test'], datasets[j]['y_test'], 0.50, validation) for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
 
-        models, holdout_results = val.pick_top_performer(models, holdout_results, classifiers, feature_selection, iterations)
+        models, holdout_results = val.pick_top_performer(models, cv_results, holdout_results, classifiers, feature_selection, iterations)
 
         print("FINISHED TRAINING MODELS")
         print("HOLD-OUT - FINISHED GATHERING RESULTS")
