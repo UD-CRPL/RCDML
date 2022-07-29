@@ -1,4 +1,4 @@
-#!/Users/mf0082/miniconda3/envs/nemours/bin/Rscript
+#!/usr/local/bin/Rscript
 
 if(require("docopt")){
   print("docopt loaded correctly")

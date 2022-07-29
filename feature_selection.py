@@ -39,7 +39,7 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             # DIFFERENTIAL GENE EXPRESSION ANALYSIS
         elif fs == 'dge':
             print("PERFORMING DGE: ")
-            dataset = dge(path + fs + "/" + classifiers[0] + "/" + iteration, input["x_train"].T, input["y_train"], drug_name, project_info)
+            dataset = dge(path + fs + "/" + classifiers[0] + "/" + iteration + "/", input["x_train"].T, input["y_train"], drug_name, project_info)
 
             # FEATURE SWAPPING EXPERIMENT
         elif fs == 'swap':
@@ -200,7 +200,7 @@ def from_feature_list(path, dataset, labels, iteration, project_info):
 def dge(path, dataset, labels, drug_name, project_info):
 
     # Generate DGE label file used in for the limma R script
-    dge_labels_file = project_info['dge_path'] + drug_name + '_dge_input.txt'
+    dge_labels_file = path + drug_name + '_dge_input.txt'
     dge_labels = labels.copy()
     dge_labels = dge_labels.reset_index()
     dge_labels["SID"] = [s.replace('-','X') for s in dge_labels["SID"]]
@@ -215,7 +215,7 @@ def dge(path, dataset, labels, drug_name, project_info):
     import subprocess
 
     dge_script  = "./beataml_deg_commandline.R"
-    workdir   = "--dir=" + project_info['dge_path']
+    workdir   = "--dir=" + project_info['dataset_path']
     file = "--file=" + dge_labels_file
     name = "--name=" + path + drug_name
     sys.stdout.flush()

@@ -262,7 +262,7 @@ def pick_top_performer(models, cv_results, holdout_results, classifiers, feature
         results_inside_df = {}
         for classifier in classifiers:
             for i in range(0, iterations):
-                score = roc_score = roc_auc_score(cv_results[fs][classifier][i]['true_label'], cv_results[fs][classifier][i]['pred_prob'])
+                score = roc_auc_score(cv_results[fs][classifier][i]['true_label'], cv_results[fs][classifier][i]['pred_prob'])
                 if score > top_performer:
                     model = models[fs][classifier][i]
                     result = holdout_results[fs][classifier][i]
