@@ -72,7 +72,7 @@ def model_train(path, x, y, classifier, debug_mode, iteration, hyper_opt, best_p
     # Selects correct model
     model = get_model(classifier, hyper_opt)
     x, y = prepare_dataset(x, y)
-    if hyper_opt == "none":
+    if hyper_opt == "best":
         #print(best_parameters[1])
         #print(best_parameters)
         model.set_params(**best_parameters[1])
@@ -81,7 +81,8 @@ def model_train(path, x, y, classifier, debug_mode, iteration, hyper_opt, best_p
     # Trains the model
     model.fit(x, y)
 
-    if hyper_opt != "none":
+    if hyper_opt == "random_search":
+        print(hyper_opt)
         best_parameters = model.best_params_
 
     # DEBUG MODE
