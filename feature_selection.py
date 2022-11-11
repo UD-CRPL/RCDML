@@ -215,7 +215,7 @@ def dge(path, dataset, labels, drug_name, project_info):
     import subprocess
 
     dge_script  = "./beataml_deg_commandline.R"
-    workdir   = "--dir=" + project_info['dge_path']
+    workdir   = "--dir=" + project_info['dataset_path']
     file = "--file=" + dge_labels_file
     name = "--name=" + path + drug_name
     sys.stdout.flush()
@@ -227,7 +227,7 @@ def dge(path, dataset, labels, drug_name, project_info):
     runlaunch.wait()
 
     limma_script  = "limma.py"
-    dataset_path = "--dataset=" + project_info['dge_path']
+    dataset_path = "--dataset=" + project_info['dataset_path']
     dname = "--drug=" + drug_name
     result_path = "--dir=" + path
     sys.stdout.flush()
