@@ -111,7 +111,7 @@ def load_dataset_beatAML(url, normalization):
 
 ## Loads the corresponding high responder/low responder labels for "drug_name" from the BeatAML Project
 def load_labels_beatAML(url, drug_name):
-    labels = pd.read_excel(url + "variants_BeatAML.xlsx", sheet_name="Table S10-Drug Responses", usecols = ['inhibitor', 'lab_id', 'auc', 'counts'])
+    labels = pd.read_excel(url + "variants_BeatAML.xlsx", sheet_name="Table S10-Drug Responses", usecols = ['inhibitor', 'lab_id', 'auc', 'counts'], engine="openpyxl")
     # Gets rid of any drugs that was tested on less than 300 samples
     labels = labels[labels['counts'] > 300]
     labels = labels.drop('counts', axis = 1)
