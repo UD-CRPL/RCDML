@@ -96,7 +96,7 @@ def load_dataset_beatAML(url, normalization):
         #dataset = pd.read_excel(url + "variants_BeatAML.xlsx", sheet_name="Table S9-Gene Counts CPM", dtype = 'float64', converters = {'Gene': str, 'Symbol': str})
         dataset = pd.read_csv(url + "read_count_matrix.txt", dtype = 'float64', converters = {'Gene': str, 'Symbol': str}, sep="\t")
     elif normalization == "rpkm":
-        dataset = pd.read_excel(url + "variants_BeatAML.xlsx", sheet_name="Table S8-Gene Counts RPKM", dtype = 'float64', converters = {'Gene': str, 'Symbol': str})
+        dataset = pd.read_excel(url + "variants_BeatAML.xlsx", sheet_name="Table S8-Gene Counts RPKM", dtype = 'float64', converters = {'Gene': str, 'Symbol': str}, engine="openpyxl")
     else:
         sys.exit("ERROR BeatAML Project: Dataset requested not available. List of available datasets are ['cpm', 'rpkm']")
     # Sets the gene ID as the index for the data matrix rows. THESE GENE ROWS ARE THE FEATURES
@@ -111,7 +111,7 @@ def load_dataset_beatAML(url, normalization):
 
 ## Loads the corresponding high responder/low responder labels for "drug_name" from the BeatAML Project
 def load_labels_beatAML(url, drug_name):
-    labels = pd.read_excel(url + "variants_BeatAML.xlsx", sheet_name="Table S10-Drug Responses", usecols = ['inhibitor', 'lab_id', 'auc', 'counts'])
+    labels = pd.read_excel(url + "variants_BeatAML.xlsx", sheet_name="Table S10-Drug Responses", usecols = ['inhibitor', 'lab_id', 'auc', 'counts'], engine="openpyxl")
     # Gets rid of any drugs that was tested on less than 300 samples
     labels = labels[labels['counts'] > 300]
     labels = labels.drop('counts', axis = 1)

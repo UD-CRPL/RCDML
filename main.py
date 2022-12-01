@@ -115,11 +115,11 @@ def main():
 
         print("CV - PERFORMING MODEL TRAINING: ")
         best_parameters = {}
-        models = {fs: {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + fs + "/", datasets_cv[fs][iteration]['x_train'], datasets_cv[fs][iteration]['y_train'], classifier, debug['classification'], iteration, hyper_opt, best_parameters) for iteration in range(0, iterations)] for classifier in classifiers} for fs in feature_selection}
+        models = {fs: {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + fs + "/", datasets_cv[fs][iteration]['x_train'], datasets_cv[fs][iteration]['y_train'], classifier, debug['classification'], iteration, hyper_opt, best_parameters) for iteration in range(0, iterations)] for classifier in classifiers} if fs != "random" else {classifier: ["no random cv" for iteration in range(0, iterations)] for classifier in classifiers}  for fs in feature_selection}
         print("CV - FINISHED TRAINING MODELS")
 
         print("CV - GATHERING RESULTS")
-        cv_results = {fs: {classifier: [val.validate_model(models[fs][classifier][iteration][0], datasets_cv[fs][iteration]['x_test'], datasets_cv[fs][iteration]['y_test'], 0.50, "cv") for iteration in range(0, iterations)] for classifier in classifiers} for fs in feature_selection}
+        cv_results = {fs: {classifier: [val.validate_model(models[fs][classifier][iteration][0], datasets_cv[fs][iteration]['x_test'], datasets_cv[fs][iteration]['y_test'], 0.50, "cv") for iteration in range(0, iterations)] for classifier in classifiers} if fs != "random" else {classifier: ["no random cv" for iteration in range(0, iterations)] for classifier in classifiers} for fs in feature_selection}
         #print("CV - FINISHED GATHERING")
         #val.save_results(result_path + date, "cv", feature_selection, classifiers, iterations, results, models, datasets, labels, feature_selection_parameters, drug_name)
 
@@ -141,7 +141,7 @@ def main():
 
         print("HOLD-OUT - PERFORMING MODEL TRAINING: ")
 
-        models = {j: {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + j + "/", datasets[j]['x_train'], datasets[j]['y_train'], classifier, debug['classification'], "hold_out", "none", models[j][classifier][i])for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
+        models = {j: {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + j + "/", datasets[j]['x_train'], datasets[j]['y_train'], classifier, debug['classification'], "hold_out", "best", models[j][classifier][i]) for i in range(0, iterations)] for classifier in classifiers} if j != "random" else {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + j + "/", datasets[j]['x_train'], datasets[j]['y_train'], classifier, debug['classification'], "hold_out", "none", models[j][classifier][i]) for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
         holdout_results = {j: {classifier: [val.validate_model(models[j][classifier][i][0], datasets[j]['x_test'], datasets[j]['y_test'], 0.50, validation) for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
 
         models, holdout_results = val.pick_top_performer(models, cv_results, holdout_results, classifiers, feature_selection, iterations)

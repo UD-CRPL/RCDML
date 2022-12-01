@@ -258,19 +258,36 @@ def pick_top_performer(models, cv_results, holdout_results, classifiers, feature
     best_results = {}
     top_performer = -1
     for fs in feature_selection:
-        models_inside_df = {}
-        results_inside_df = {}
-        for classifier in classifiers:
-            for i in range(0, iterations):
-                score = roc_auc_score(cv_results[fs][classifier][i]['true_label'], cv_results[fs][classifier][i]['pred_prob'])
-                if score > top_performer:
-                    model = models[fs][classifier][i]
-                    result = holdout_results[fs][classifier][i]
-                    top_performer = score
-            models_inside_df[classifier] = model
-            results_inside_df[classifier] = result
-        best_models[fs] = models_inside_df
-        best_results[fs] = results_inside_df
+        if fs == "random":
+            models_inside_df = {}
+            results_inside_df = {}
+            for classifier in classifiers:
+                for i in range(0, iterations):
+                    print(holdout_results[fs][classifier][i])
+                    score = roc_auc_score(holdout_results[fs][classifier][i]['true_label'], holdout_results[fs][classifier][i]['pred_prob'])
+                    if score > top_performer:
+                        model = models[fs][classifier][i]
+                        result = holdout_results[fs][classifier][i]
+                        top_performer = score
+                models_inside_df[classifier] = model
+                results_inside_df[classifier] = result
+            best_models[fs] = models_inside_df
+            best_results[fs] = results_inside_df
+
+        else:
+            models_inside_df = {}
+            results_inside_df = {}
+            for classifier in classifiers:
+                for i in range(0, iterations):
+                    score = roc_auc_score(cv_results[fs][classifier][i]['true_label'], cv_results[fs][classifier][i]['pred_prob'])
+                    if score > top_performer:
+                        model = models[fs][classifier][i]
+                        result = holdout_results[fs][classifier][i]
+                        top_performer = score
+                models_inside_df[classifier] = model
+                results_inside_df[classifier] = result
+            best_models[fs] = models_inside_df
+            best_results[fs] = results_inside_df
     return best_models, best_results
 
 # Saves the ROC Curve data points
@@ -388,22 +405,23 @@ def save_results(result_path, mode, feature_selection, classifiers, iterations, 
         for i in feature_selection:
             for classifier in classifiers:
                 # CV
-                result = pd.DataFrame(results["cv"][i][classifier])
-                true_label = []
-                pred_proba = []
-                pred = []
-                for j in range(0, iterations):
-                    true_label.extend(result['true_label'][j])
-                    pred_proba.extend(result['pred_prob'][j])
-                    pred.extend(result['pred'][j])
-                    if i == 'swap':
-                        plot_venn_diagram(result_path + "/" + mode + "/" + i + "/" + classifier + "/", project_info, j, drug_name)
-                fpr, tpr, thresholds = roc_curve(true_label, pred_proba)
-                roc = roc_auc_score(true_label, pred_proba)
-                result.to_csv(result_path + "/" + mode + "/" + i + "/" + classifier + "/results.tsv", sep='\t', index = False)
-                mlpipeline_plot_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/", fpr, tpr, roc, classifier, i)
-                save_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/", fpr, tpr, thresholds)
-                mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/", "cv", models, true_label, pred, 0)
+                if i != "random":
+                    result = pd.DataFrame(results["cv"][i][classifier])
+                    true_label = []
+                    pred_proba = []
+                    pred = []
+                    for j in range(0, iterations):
+                        true_label.extend(result['true_label'][j])
+                        pred_proba.extend(result['pred_prob'][j])
+                        pred.extend(result['pred'][j])
+                        if i == 'swap':
+                            plot_venn_diagram(result_path + "/" + mode + "/" + i + "/" + classifier + "/", project_info, j, drug_name)
+                    fpr, tpr, thresholds = roc_curve(true_label, pred_proba)
+                    roc = roc_auc_score(true_label, pred_proba)
+                    result.to_csv(result_path + "/" + mode + "/" + i + "/" + classifier + "/results.tsv", sep='\t', index = False)
+                    mlpipeline_plot_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/", fpr, tpr, roc, classifier, i)
+                    save_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/", fpr, tpr, thresholds)
+                    mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/", "cv", models, true_label, pred, 0)
 
                 #hold_out
                 thresholds = make_thresholds(10000)

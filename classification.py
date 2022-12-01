@@ -9,7 +9,6 @@ import data_preprocess as dp
 rf_parameters = {
 'bootstrap': [True, False],
 'max_depth': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, None],
-'max_features': ['auto', 'sqrt'],
 'min_samples_leaf': [1, 2, 4],
 'min_samples_split': [2, 5, 10],
 'n_estimators': [100, 150, 200, 250, 500, 750, 1000]}
@@ -72,7 +71,7 @@ def model_train(path, x, y, classifier, debug_mode, iteration, hyper_opt, best_p
     # Selects correct model
     model = get_model(classifier, hyper_opt)
     x, y = prepare_dataset(x, y)
-    if hyper_opt == "none":
+    if hyper_opt == "best":
         #print(best_parameters[1])
         #print(best_parameters)
         model.set_params(**best_parameters[1])
@@ -81,7 +80,8 @@ def model_train(path, x, y, classifier, debug_mode, iteration, hyper_opt, best_p
     # Trains the model
     model.fit(x, y)
 
-    if hyper_opt != "none":
+    if hyper_opt == "random_search":
+        print(hyper_opt)
         best_parameters = model.best_params_
 
     # DEBUG MODE
