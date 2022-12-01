@@ -122,16 +122,16 @@ def make_result_dir(path):
 
 iterations = 10
 run_name = "pi3k-akt-mtor"
-data_path = "/Users/mf0082/Documents/Bioinformatics_paper/results/beatAML/results_1014/" + run_name
-result_path = "/Users/mf0082/Documents/Bioinformatics_paper/results/beatAML/results_1014/" + run_name 
+data_path = "/Users/mf0082/Documents/Bioinformatics_paper/results/" + run_name
+result_path = "/Users/mf0082/Documents/Bioinformatics_paper/results/" + run_name 
 feature_selection = ["shap","pca","dge","random"]
 classifiers = ["rf", "gdb"]
 mode = "/cv_and_test/"
-date = "/10-11-2022/"
+date = "/11-11-2022/"
 hold_out = True
 #drug_list = ["Cediranib", "Sorafenib", "Regorafenib", "Dasatinib"]
 #drug_list = generate_drug_list("/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/", "BTK_TEC")
-drug_list = list(get_drug_names("/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/", "PI3K-AKT_MTOR")[0])
+drug_list = list(get_drug_names("/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/", "PI3K_AKT_MTOR")[0])
 run_info = {"fs":feature_selection, "classifiers":classifiers, "mode":mode, "date":date, "hold_out": hold_out}
 make_result_dir(result_path)
 
