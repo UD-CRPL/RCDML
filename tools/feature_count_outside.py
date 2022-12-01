@@ -13,7 +13,7 @@ def make_result_dir(path):
 
 # Given a drug family, generate a list of all the drugs that are part of the family
 def generate_drug_list(path, drug_family):
-    drug_list = pd.read_excel(path + "aml/beatAML/variants_BeatAML.xlsx", sheet_name="Table S11-Drug Families")
+    drug_list = pd.read_excel(path + "variants_BeatAML.xlsx", sheet_name="Table S11-Drug Families", engine = 'openpyxl')
     drug_list = drug_list[drug_list["family"] == drug_family]
     drug_list = drug_list['inhibitor']
     if drug_family == 'RTK_TYPE_III':
@@ -36,29 +36,34 @@ def add_to_feature_counter(features, counter):
 def get_features(path, drug, counter, dict):
     for i in range(1, dict["iterations"] + 1):
         print("GETTING FEATURES FOR DRUG: "  + drug + " FROM ITERATION: " + str(i))
-        data = pd.read_csv(path + str(i) + "/feature_counters/" + "/" + drug + "/" + drug + "_shap_feature_counter.tsv", sep='\t')
-        data = data['GENE ID'].values
-        print(data)
+        data = pd.read_csv(path + str(i) + "/" + drug + dict["date"] + dict["mode"] + dict["fs"] + dict["classifier"] +  "hold_out/genes_selected.tsv", sep='\t', header = None)
+        data = data[0].values
         add_to_feature_counter(data, counter)
     return
 
-features_path = "/Users/mf0082/Documents/Nature_Comm_paper/Code/results/beatAML/bioinformatics_new/"
-dataset_path = "/Users/mf0082/Documents/MODEL/dataset/"
+run_name = "30features_25split/"
+features_path = "/Users/mf0082/Documents/Bioinformatics_paper/results/beatAML/new_results/" + run_name
+dataset_path = "/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/"
 drug_list = generate_drug_list(dataset_path, "RTK_TYPE_III")
 #drug_list = ["Regorafenib", "Crenolanib", "Dasatinib", "KW-2449", "Foretinib"]
 mode = "/cv_and_test/"
-date = "/05-31-2022/"
+date = "/07-29-2022/"
 feature_selection = "/shap/"
 classifier = "/rf/"
 iterations = 10
-dict = {"fs":feature_selection, "classifier":classifier, "mode":mode, "date":date, "iterations": iterations}
+hold_out = True
+dict = {"fs":feature_selection, "classifier":classifier, "mode":mode, "date":date, "iterations": iterations, "hold_out": hold_out}
 result = None
-result_path = features_path
+if hold_out:
+    result_path = features_path + "/all_results/hold_out/"
+else:
+    result_path = features_path + "/all_results/cv/"
 # Loads the RNA Sequence BeatAML dataset and gets the list of genes
-gene_list = pd.read_excel(dataset_path + "aml/beatAML/variants_BeatAML.xlsx", sheet_name="Table S9-Gene Counts CPM")
+gene_list = pd.read_csv(dataset_path + "read_count_matrix.txt", sep="\t")
 gene_list = gene_list['Gene']
 print("finished loading the gene list")
 
+all_results = pd.DataFrame()
 for i, drug in enumerate(drug_list):
     print(drug + ":")
     counter = build_feature_counter(gene_list)
@@ -67,10 +72,12 @@ for i, drug in enumerate(drug_list):
     counter_df = pd.DataFrame(counter.items(), columns=["GENE ID", "FREQUENCY"])
     counter_df = counter_df[counter_df["FREQUENCY"] != 0]
     counter_df = counter_df.sort_values(by=['FREQUENCY'], ascending=False)
+    counter_df["DRUG ID"] = drug 
     #counter_df["DRUG ID"] = drug
-    make_result_dir(result_path + "/genes_selected/cv/" + drug)
-    counter_df.to_csv(result_path + "/genes_selected/cv/" + drug + "/" + drug + "_shap_feature_counter.tsv", index = False, sep="\t")
-
+    make_result_dir(result_path + "/genes_selected/" + drug)
+    counter_df.to_csv(result_path + "/genes_selected/" + drug + "/" + drug + "_shap_feature_counter.tsv", index = False, sep="\t")
+    all_results = pd.concat([all_results, counter_df])
+all_results.to_csv(result_path + "all_feature_counter.txt", sep = "\t", index = False)
     #if i == 0:
     #    result = counter_df
     #else:

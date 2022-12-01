@@ -14,7 +14,7 @@ def all_in_one(result_path, data, ids, value):
     gridsize = get_subplots_gridsize(number_of_plots)
     print(gridsize)
     fig, axis = plt.subplots(gridsize[0], gridsize[1], sharex=True, sharey=True)
-    fig.suptitle('Drug Response AUC Distribution for 24 RTK-TYPE-III Inhibitors')
+    #fig.suptitle('Drug Response AUC Distribution for 24 RTK-TYPE-III Inhibitors')
 
     #colors = []
     #for i in range(0, len(combinations)):
@@ -50,14 +50,16 @@ def all_in_one(result_path, data, ids, value):
     #    ax.set(xlabel='1 - Specificity (False Positive Rate)', ylabel='Sensitivity (True Positive Rate)')
         ax.label_outer()
 
-    fig.text(0.5, 0.04, 'AUC', ha='center')
-    fig.text(0.04, 0.5, 'Count', va='center', rotation='vertical')
+    fig.text(0.5, 0.025, 'AUC', ha='center', fontsize=24)
+    fig.text(0.075, 0.5, 'Count', va='center', rotation='vertical', fontsize = 24)
     fig.set_figheight(15)
     fig.set_figwidth(22)
     #plt.figure(figsize=(50, 50))
     #plt.legend(framealpha = .3, loc=(1.04, 0))
     #plt.show()
-    plt.savefig(result_path + "/all_distributions.png")
+    #plt.tight_layout()
+    fig.set_dpi(1200)
+    plt.savefig(result_path + "/all_distributions.tif")
     return
 
 #sns.set_theme(style="whitegrid")
@@ -250,11 +252,11 @@ def get_subplots_gridsize(num):
 
 # DARWIN MACRO
 dataset_path = "/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/"
-result_path = '/Users/mf0082/Documents/Nature_Comm_paper/results/drug_distributions/'
+result_path = '/Users/mf0082/Documents/Bioinformatics_paper/results/new_results/'
 drug_family = "RTK_TYPE_III"
 ## LOADING DATASET
-dataset = pd.read_excel(dataset_path + "variants_BeatAML.xlsx", sheet_name="Table S10-Drug Responses")
-family = pd.read_excel(dataset_path + "variants_BeatAML.xlsx", sheet_name="Table S11-Drug Families")
+dataset = pd.read_excel(dataset_path + "variants_BeatAML.xlsx", sheet_name="Table S10-Drug Responses", engine="openpyxl")
+family = pd.read_excel(dataset_path + "variants_BeatAML.xlsx", sheet_name="Table S11-Drug Families", engine="openpyxl")
 family = family[family["family"] == drug_family]
 dataset = dataset[dataset['inhibitor'].isin(family['inhibitor'])]
 
