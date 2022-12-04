@@ -18,9 +18,9 @@ def find_middle(input_list):
     middle = float(len(input_list)) / 2
     print(middle)
     if len(input_list) % 2 != 0:
-        return int(middle - .5), int(middle - .5)
+        return input_list[int(middle - .5)], input_list[int(middle - .5)]
     else:
-        return int(middle), int(middle)
+        return input_list[int(middle)], input_list[int(middle - 1)]
 
 def get_subplots_gridsize(num):
     factors = factorize(num)
@@ -31,7 +31,7 @@ def roc_all_drugs(data_path, drug_list, run_info):
     np.random.seed(667)
     number_of_plots = len(drug_list)
     print(number_of_plots)
-    gridsize = find_middle(drug_list)
+    gridsize = get_subplots_gridsize(number_of_plots)
     print(gridsize)
     fig, axis = plt.subplots(gridsize[0], gridsize[1], sharex=True, sharey=True)
     colors = mcolors.TABLEAU_COLORS
@@ -68,8 +68,11 @@ def roc_all_drugs(data_path, drug_list, run_info):
     #plt.tight_layout()
     fig.set_size_inches(12.5, 12.5)
     fig.set_dpi(1200)
-    plt.savefig(data_path + "_roc.tif")
-    #plt.show()
+    if run_info["hold_out"]:
+        plt.savefig(data_path + "holdout_roc.tif")
+    else:
+        plt.savefig(data_path + "cv_roc.tif")
+   # plt.show()
     plt.clf()
 
 # Get list of drugs that are part of the specified "drug_family"
@@ -96,7 +99,10 @@ def mlpipeline_plot_roc(result_path, data, drug, run_info):
     plt.ylabel('Sensitivity (True Positive Rate)')
     plt.legend()
     plt.title('ROC Model: ' + drug.upper())
-    plt.savefig(result_path + "/" + drug + "/combined_roc.png")
+    if run_info["hold_out"]:
+        plt.savefig(result_path + "/" + drug + "/holdout_combined_roc.png")    
+    else:
+        plt.savefig(result_path + "/" + drug + "/combined_roc.png")
     plt.clf()
     return
 
@@ -110,7 +116,10 @@ def generate_combinations(dict):
 
 # Gets the ROC data points
 def get_data(data_path, drug, run_info):
-    data = {fs: {classifier: get_roc_xy(data_path + drug + run_info["date"] + run_info["mode"] + fs + "/" + classifier) for classifier in run_info["classifiers"]} for fs in run_info["fs"]}       
+    if run_info["hold_out"]:
+        data = {fs: {classifier: get_roc_xy(data_path + drug + run_info["date"] + run_info["mode"] + fs + "/" + classifier + "/hold_out/") for classifier in run_info["classifiers"]} for fs in run_info["fs"]}       
+    else:
+        data = {fs: {classifier: get_roc_xy(data_path + drug + run_info["date"] + run_info["mode"] + fs + "/" + classifier) for classifier in run_info["classifiers"]} for fs in run_info["fs"]}       
     return data
 
 def get_roc_xy(path):
@@ -120,18 +129,18 @@ def get_roc_xy(path):
 def make_result_dir(path):
     Path(path).mkdir(parents=True, exist_ok=True)
 
-iterations = 10
-run_name = "pi3k-akt-mtor"
-data_path = "/Users/mf0082/Documents/Bioinformatics_paper/results/" + run_name
-result_path = "/Users/mf0082/Documents/Bioinformatics_paper/results/" + run_name 
-feature_selection = ["shap","pca","dge","random"]
-classifiers = ["rf", "gdb"]
+iterations = 1
+run_name = "rtk-type-iii"
+data_path = "/Users/mf0082/Documents/Bioinformatics_paper/results/beatAML/" + run_name
+result_path = "/Users/mf0082/Documents/Bioinformatics_paper/results/beatAML/" + run_name 
+feature_selection = ["shap","pca","dge"]
+classifiers = ["rf", "gdb", "lgbm"]
 mode = "/cv_and_test/"
-date = "/11-11-2022/"
-hold_out = True
+date = "/12-02-2022/"
+hold_out = False
 #drug_list = ["Cediranib", "Sorafenib", "Regorafenib", "Dasatinib"]
 #drug_list = generate_drug_list("/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/", "BTK_TEC")
-drug_list = list(get_drug_names("/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/", "PI3K_AKT_MTOR")[0])
+drug_list = list(get_drug_names("/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/", "RTK_TYPE_III")[0])
 run_info = {"fs":feature_selection, "classifiers":classifiers, "mode":mode, "date":date, "hold_out": hold_out}
 make_result_dir(result_path)
 
