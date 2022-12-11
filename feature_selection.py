@@ -180,6 +180,7 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
 
     return dict
 
+
 # Feature Selection: "random"
 # Selects "feature_size" random features from the dataset
 def random_selected_features(dataset, feature_size):
@@ -277,7 +278,10 @@ def shapley(path, dataset, labels, feature_size, plot):
     distribution = distribution.mean(axis=0)
     # If selected, plot the SHAP feature importance summary plot
     if(plot):
+        from xgboost import plot_importance
         plot_shap(path, shap_values, dataset)
+        xgboost.plot_importance(model, max_num_features=feature_size)
+        plt.savefig(path + "/model_feature_importance.png")
     # Selects the top "feature_size" genes with the largest absolute mean shap value score
     index = np.argpartition(distribution, -(feature_size))[-(feature_size):]
     slice = dataset.iloc[:,index]
