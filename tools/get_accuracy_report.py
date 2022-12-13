@@ -77,10 +77,11 @@ def confusion_matrix_scores(result_path, data, drug, combinations, run_info, ite
         # gets predictions from the data
         RFsensitivity, RFspecificity, RFroc = get_results(data, fs, "rf", run_info["hold_out"])
         GBsensitivity, GBspecificity, GBroc = get_results(data,fs, 'gdb', run_info["hold_out"])
+        LGBMsensitivity, LGBMspecificity, LGBMroc = get_results(data,fs, 'lgbm', run_info["hold_out"])
 
         # saving format
         #dict = {'Drug':drug, 'FRT':combo[0], 'Classifier':combo[1], 'sens': sensitivity, 'spec': specificity, 'auc':roc}
-        dict = {'drug':drug, 'FRT':fs, 'RFsenz': RFsensitivity, 'RFspec': RFspecificity, 'RFauc':RFroc, 'GBsenz': GBsensitivity, 'GBspec': GBspecificity, 'GBauc':GBroc}
+        dict = {'drug':drug, 'FRT':fs, 'RFsenz': RFsensitivity, 'RFspec': RFspecificity, 'RFauc':RFroc, 'GBsenz': GBsensitivity, 'GBspec': GBspecificity, 'GBauc':GBroc, 'LGBMsez':LGBMsensitivity, 'LGBMspec': LGBMspecificity, 'LGBMauc':LGBMroc}
         df = pd.DataFrame(dict, index=[0])
        # all_results = all_results.append(df)
         all_results = pd.concat([all_results, df])
@@ -123,16 +124,16 @@ def make_result_dir(path):
     Path(path).mkdir(parents=True, exist_ok=True)
 
 iterations = 10
-run_name = "results_1014/rtk-vegfr/"
+run_name = "rtk-type-iii"
 data_path = "/Users/mf0082/Documents/Bioinformatics_paper/results/beatAML/" + run_name
 #drug_list = generate_drug_list('/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/', 'RTK_TYPE_III')
 #drug_list = ["Crenolanib","Dasatinib", "Foretinib", "Regorafenib"]
-drug_list = list(get_drug_names("/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/", "RTK_VEGFRs")[0])
-feature_selection = ['shap','dge','pca', 'random']
-classifiers = ["rf",'gdb']
+drug_list = list(get_drug_names("/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/", "RTK_TYPE_III")[0])
+feature_selection = ['pca', 'shap', 'dge']
+classifiers = ["rf", 'gdb', 'lgbm']
 validation = "/cv_and_test/"
-date = "/10-11-2022/"
-hold_out = True
+date = "/12-02-2022/"
+hold_out = False
 
 run_info = {"fs":feature_selection, "classifiers":classifiers, "validation":validation, "date":date, "hold_out": hold_out}
 combinations = generate_combinations(run_info)
@@ -158,10 +159,11 @@ if not get_missing(data_path, drug_list, combinations, iterations, run_info):
                 all_results = pd.concat([all_results, scores])
             all_results.to_excel(writer, sheet_name='Iteration ' + str(iteration), index = False)
             final_results.append(all_results)
-    final_results = pd.concat(final_results).groupby(['Drug', 'FRT']).mean()
    # print(final_results)
+    final_results = pd.concat(final_results).groupby(['drug', 'FRT']).mean()
+    print(final_results)
     final_results.to_csv(result_dir + '/avg_results_random.txt', sep="\t")
-    final_results.to_excel(writer, sheet_name='Average', index = False)  
+    final_results.to_excel(writer, sheet_name='Average', index = True)  
     writer.save()
 else:
     print("Missing results, no report generated")
