@@ -48,7 +48,8 @@ def roc_all_drugs(data_path, drug_list, run_info):
             axis[i, j].set(xlabel='', ylabel='')
             title = drug_list[k]
             axis[i, j].set_title(title)
-            k = i + j
+            k = k + 1
+            print(k)
 
     for label, ax in enumerate(axis.flat):
         #ax.set_title('Normal Title', fontstyle='italic')
@@ -62,7 +63,7 @@ def roc_all_drugs(data_path, drug_list, run_info):
     fig.text(0.5, 0.025, '1 - Specificity (False Positive Rate)', ha='center', fontsize = 12)
     fig.text(0.04, 0.5, 'Sensitivity (True Positive Rate)', va='center', rotation='vertical', fontsize = 12)
 
-    leg = plt.legend(bbox_to_anchor=(1.55, 0.025), loc='lower right')
+    leg = plt.legend(bbox_to_anchor=(1.25, 0.025), loc='lower right')
     for lh in leg.legendHandles: 
         lh.set_alpha(1)
     #plt.tight_layout()
@@ -129,11 +130,12 @@ def get_roc_xy(path):
 def make_result_dir(path):
     Path(path).mkdir(parents=True, exist_ok=True)
 
-iterations = 1
+iterations = 10
 run_name = "rtk-type-iii"
 data_path = "/Users/mf0082/Documents/Bioinformatics_paper/results/beatAML/" + run_name
-result_path = "/Users/mf0082/Documents/Bioinformatics_paper/results/beatAML/" + run_name 
-feature_selection = ["shap","pca","dge"]
+#result_path = "/Users/mf0082/Documents/Bioinformatics_paper/results/beatAML/" + run_name 
+result_path = "/Users/mf0082/Documents/Bioinformatics_paper/"
+feature_selection = ["shap", 'pca', 'dge']
 classifiers = ["rf", "gdb", "lgbm"]
 mode = "/cv_and_test/"
 date = "/12-02-2022/"
@@ -141,6 +143,7 @@ hold_out = False
 #drug_list = ["Cediranib", "Sorafenib", "Regorafenib", "Dasatinib"]
 #drug_list = generate_drug_list("/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/", "BTK_TEC")
 drug_list = list(get_drug_names("/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/", "RTK_TYPE_III")[0])
+#drug_lsit = []
 run_info = {"fs":feature_selection, "classifiers":classifiers, "mode":mode, "date":date, "hold_out": hold_out}
 make_result_dir(result_path)
 
@@ -150,3 +153,4 @@ for iteration in range(1, iterations + 1):
  #       data = get_data(data_path + "/" + str(iteration) + "/", drug, run_info)
  #       mlpipeline_plot_roc(result_path +  "/" + str(iteration) + "/", data, drug, run_info)
     roc_all_drugs(data_path +  "/" + str(iteration) + "/", drug_list, run_info)
+
