@@ -5,6 +5,7 @@ import numpy as np
 import shap
 import sklearn
 import xgboost
+from xgboost import plot_importance
 import sys
 
 # Feature selection wrapper, chooses the correct feature selection technique based on the configuration file parameters
@@ -278,10 +279,8 @@ def shapley(path, dataset, labels, feature_size, plot):
     distribution = distribution.mean(axis=0)
     # If selected, plot the SHAP feature importance summary plot
     if(plot):
-        from xgboost import plot_importance
         plot_shap(path, shap_values, dataset)
-        xgboost.plot_importance(model, max_num_features=feature_size)
-        plt.savefig(path + "/model_feature_importance.png")
+        plot_model_importance(path, feature_size, model)
     # Selects the top "feature_size" genes with the largest absolute mean shap value score
     index = np.argpartition(distribution, -(feature_size))[-(feature_size):]
     slice = dataset.iloc[:,index]
@@ -298,6 +297,12 @@ def plot_shap(path, shap_values, dataset):
         plt.savefig(path + "/shap_feature_importance.png", dpi=100)
         plt.clf()
         return
+  
+
+def plot_model_importance(path, feature_size, model):
+    xgboost.plot_importance(model, max_num_features=feature_size)
+    plt.savefig(path + "/model_feature_importance.png")
+    plt.clf()
 
 # Creates the feature counter dictionary for all features in the dataset
 def build_feature_counter(dataset):
