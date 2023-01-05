@@ -293,7 +293,7 @@ def plot_shap(path, shap_values, dataset):
         plt.xlabel('Shap Values')
         plt.ylabel('Feature')
         figure = plt.gcf()
-        figure.set_size_inches(20, 10)
+        figure.set_size_inches(15, 10)
         plt.savefig(path + "/shap_feature_importance.png", dpi=100)
         plt.clf()
         return
@@ -301,6 +301,8 @@ def plot_shap(path, shap_values, dataset):
 
 def plot_model_importance(path, feature_size, model):
     xgboost.plot_importance(model, max_num_features=feature_size)
+    figure = plt.gcf()
+    figure.set_size_inches(15, 10)
     plt.savefig(path + "/model_feature_importance.png")
     plt.clf()
 
