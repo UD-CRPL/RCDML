@@ -1,0 +1,11 @@
+wheel
+numpy
+pandas
+scikit-learn
+matplotlib
+matplotlib-venn
+xgboost
+xlrd
+openpyxl
+ipython
+shap
