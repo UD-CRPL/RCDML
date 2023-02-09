@@ -136,7 +136,7 @@ def main():
                 dp.make_result_dir(result_path + date + "/" + validation + "/" + fs + "/" + classifier + "/hold_out/")
 
         print("HOLD-OUT - PERFORMING FEATURE SELECTION: ")
-        print(datasets)
+      #  print(datasets)
         datasets = {fs:feat.feature_selection(result_path + date + "/" + validation + "/", fs, "hold_out", datasets['hold_out'], labels, feature_size, classifiers, feature_counter, debug['feature_selection'], feature_selection_parameters, drug_name) for fs in feature_selection}
 
         print("HOLD-OUT - PERFORMING MODEL TRAINING: ")

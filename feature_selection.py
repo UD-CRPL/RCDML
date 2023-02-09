@@ -61,7 +61,7 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             dge_features = set(dge_dataset.columns)
             all_features = shap_features | dge_features
             dataset = input["x_train"].loc[input["x_train"].index.isin(all_features)].T
-            print(dataset)
+           # print(dataset)
 
         elif fs == 'none':
             print("NO FEATURE SELECTION: ")
@@ -145,7 +145,7 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             dge_features = set(dge_dataset.columns)
             all_features = shap_features | dge_features
             dataset = input["x_train"][iteration].loc[input["x_train"][iteration].index.isin(all_features)].T
-            print(dataset)
+         #   print(dataset)
 
         elif fs == 'none':
             print("NO FEATURE SELECTION: " + str(iteration) + "/" + str(total_iterations))
@@ -265,10 +265,10 @@ def shapley(path, dataset, labels, feature_size, plot):
     dataset = dataset.T
     # Set xgboost model to run the shap value calculations using default parameters
     # This can be changed to other ensemble models that the shap package supports (Random Forest, etc)
-    model = xgboost.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
+    model = xgboost.XGBClassifier(eval_metric='logloss')
     model.fit(dataset, labels)
     # initializes the shap JavaScript visualization
-    shap.initjs()
+   # shap.initjs()
     # Calculates the shap value contributions for
     shap_values = shap.TreeExplainer(model).shap_values(dataset)
     # Removes direction to the shap value marginal contribution by taking the absolute value
