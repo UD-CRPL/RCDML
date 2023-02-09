@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import accuracy_score
-from sklearn.metrics import plot_confusion_matrix
+#from sklearn.metrics import plot_confusion_matrix
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_curve
@@ -230,10 +230,10 @@ def mlpipeline_plot_cm(result_path, mode, model, x_test, y_test, iteration):
 
     # Since results are stored differently depending on validation type there are two versions of the code that plots the matrix
     if mode == 'loo' or mode == 'cv' or mode == "cv_and_test":
-        print(x_test)
-        print(y_test)
-        print(len(x_test))
-        print(len(y_test))
+     #   print(x_test)
+     #   print(y_test)
+     #   print(len(x_test))
+     #   print(len(y_test))
         #x_test, y_test = cl.prepare_dataset(x_test, y_test)
         cm = confusion_matrix(x_test, y_test, labels=[0, 1])
         disp = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels=class_names)
@@ -263,7 +263,7 @@ def pick_top_performer(models, cv_results, holdout_results, classifiers, feature
             results_inside_df = {}
             for classifier in classifiers:
                 for i in range(0, iterations):
-                    print(holdout_results[fs][classifier][i])
+                 #   print(holdout_results[fs][classifier][i])
                     score = roc_auc_score(holdout_results[fs][classifier][i]['true_label'], holdout_results[fs][classifier][i]['pred_prob'])
                     if score > top_performer:
                         model = models[fs][classifier][i]

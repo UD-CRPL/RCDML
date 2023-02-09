@@ -9,3 +9,4 @@ xlrd
 openpyxl
 ipython
 shap
+lightgbm

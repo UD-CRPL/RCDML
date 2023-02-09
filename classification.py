@@ -52,7 +52,7 @@ def get_model(classifier, hyper_opt):
     # Classifier: "gdb"
     # Gradient Boosting, xgboost
     elif classifier == 'gdb':
-        model = xgboost.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
+        model = xgboost.XGBClassifier(eval_metric='logloss')
         # Random Search CV used for Hyperparameter optimization, sets up the operation for
         # going through the list of hyperparameters above and selects best performing model
         if hyper_opt == "random_search":

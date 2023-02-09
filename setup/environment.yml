@@ -1,22 +1,16 @@
-name: rnaseqmodel
+name: rcdml_env
 channels:
   - defaults
 dependencies:
+  - wheel
   - pandas
-  - seaborn
-  - keras
-  - tensorflow
   - scikit-learn
-  - xgboost
-  - tpot
-  - shap
-  - scikit-plot
-  - statsmodels
   - xlrd
+  - xgboost
+  - shap
+  - ipython
+  - matplotlib
   - openpyxl
-  - dask
-  - dask-ml
-  - jupyterlab
-  - pathlib
-  - glmnet
   - matplotlib-venn
+  - lightgbm
+prefix: /home/mferrato/anaconda3/envs/rcdml_env
