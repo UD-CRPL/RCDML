@@ -7,6 +7,7 @@ import sklearn
 import xgboost
 from xgboost import plot_importance
 import sys
+import time
 
 # Feature selection wrapper, chooses the correct feature selection technique based on the configuration file parameters
 def feature_selection(path, fs, iteration, input, labels, feature_size, classifiers, feature_counter, debug_mode, project_info, drug_name):
@@ -30,7 +31,10 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             # SHAPLEY VALUE FEATURE SELECTION
         if fs == 'shap':
             print("PERFORMING SHAP: ")
+            start = time.time()
             dataset = shapley(path + fs + "/" + classifiers[0] + "/" + iteration, input["x_train"], input["y_train"], feature_size, 1)
+            end = time.time()
+            print("SHAP RUN TIME: ", end - start)
 
             # PRINCIPAL COMPONENT ANALYSIS
         elif fs == 'pca':
@@ -114,7 +118,10 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             # SHAPLEY VALUE FEATURE SELECTION
         if fs == 'shap':
             print("PERFORMING SHAP: " + str(iteration) + "/" + str(total_iterations))
+            start = time.time()
             dataset = shapley(path + fs + "/" + classifiers[0] + "/" + str(iteration), input["x_train"][iteration], input["y_train"][iteration], feature_size, 1)
+            end = time.time()
+            print("SHAP RUN TIME: ", end - start)
 
             # PRINCIPAL COMPONENT ANALYSIS
         elif fs == 'pca':

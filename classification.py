@@ -97,7 +97,11 @@ def model_train(path, x, y, classifier, debug_mode, iteration, hyper_opt, best_p
         # Transforms the dataset for correct scikit-learn format
     print("CLASSIFIER: " + classifier)
     # Trains the model
+    import time
+    start = time.time()
     model.fit(x, y)
+    end = time.time()
+    print("CLASSIFIER TRAINING TIME: ", end - start)
 
     if hyper_opt == "random_search":
         print(hyper_opt)

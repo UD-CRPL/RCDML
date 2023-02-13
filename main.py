@@ -83,7 +83,20 @@ def main():
     drug_name = parameters['drug_name']
 
     result_path = result_path + project + "/" + run_name + "/" + drug_name +  "/"
-
+    
+    gpu = int(parameters['gpu'])
+    
+    if gpu == 1:
+        import gpu.data_preprocess as dp
+        import gpu.feature_selection as feat
+        import gpu.validation as val
+        import gpu.classification as classification
+    else:
+        import data_preprocess as dp
+        import feature_selection as feat
+        import validation as val
+        import classification as classification
+        
     print("PIPELINE STARTS")
 
     dataset, dataset_samples = dp.load_dataset(dataset_path, project, normalization)
