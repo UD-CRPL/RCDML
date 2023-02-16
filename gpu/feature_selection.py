@@ -285,8 +285,16 @@ def shapley(path, dataset, labels, feature_size, plot):
   #  labels = cudf.from_pandas(dataset)
     # Set xgboost model to run the shap value calculations using default parameters
     # This can be changed to other ensemble models that the shap package supports (Random Forest, etc)
-    model = xgboost.XGBClassifier(tree_method='gpu_hist', eval_metric='logloss')
-    model.fit(dataset, labels)
+    
+   # model = xgboost.XGBClassifier(tree_method='gpu_hist', eval_metric='logloss')
+  #  model.fit(dataset, labels)
+    
+   # params = {'tree_method': 'gpu_hist', 'eval_metric' : 'logloss', 'max_depth': 3, 'learning_rate': 0.1}
+    params = {'tree_method': 'gpu_hist', 'max_depth': 3, 'learning_rate': 0.1, 'verbosity' : 0}
+    dtrain = xgboost.DMatrix(dataset, labels)
+    model = xgboost.train(params, dtrain)
+    model.set_param({"predictor": "gpu_predictor"})
+    
     # initializes the shap JavaScript visualization
    # shap.initjs()
     # Calculates the shap value contributions for

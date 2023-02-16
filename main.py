@@ -89,7 +89,7 @@ def main():
     if gpu == 1:
         import gpu.data_preprocess as dp
         import gpu.feature_selection as feat
-        import gpu.validation as val
+        import validation as val
         import gpu.classification as classification
     else:
         import data_preprocess as dp
