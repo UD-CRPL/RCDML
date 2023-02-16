@@ -138,7 +138,9 @@ def validate_model(model, x, y, threshold, mode):
     # Assigns probability for each test case in the form of (Probability for class 0, probability for class 1)
     prediction_proba = model.predict_proba(x)
     # Grabs the probability for class 1
-    prediction_proba = prediction_proba[:, 1]
+    #prediction_proba = prediction_proba[:, 1]
+    prediction_proba = prediction_proba.iloc[:,1]
+    print(prediction_proba)
     # Assigns class label to each test case based on a threshold
     prediction = assign_class(prediction_proba, threshold)
 
