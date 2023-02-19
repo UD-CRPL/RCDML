@@ -95,6 +95,10 @@ def main():
     print("FINISHED LOADING LABELS")
 
     dataset, labels, samples = dp.sample_match(dataset, labels, dataset_samples)
+    
+    if parameters['simulation_size'] != 'none':
+        simulation_size = int(parameters['simulation_size'])
+        dataset, labels, samples = dp.simulate_data(dataset, labels, simulation_size)
 
     feature_counter = feat.build_feature_counter(dataset)
 
