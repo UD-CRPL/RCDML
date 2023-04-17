@@ -256,23 +256,27 @@ def mlpipeline_plot_cm(result_path, mode, model, x_test, y_test, iteration):
     return
 
 def mlpipeline_plot_pr(result_path, mode, model, x_test, y_test, iteration):
-    #class_names = ['Negative Cohort','Positive Cohort']
 
     # Since results are stored differently depending on validation type there are two versions of the code that plots the matrix
     if mode == 'loo' or mode == 'cv' or mode == "cv_and_test":
-     #   print(x_test)
-     #   print(y_test)
-     #   print(len(x_test))
-     #   print(len(y_test))
-        #x_test, y_test = cl.prepare_dataset(x_test, y_test)
-     #   cm = confusion_matrix(x_test, y_test, labels=[0, 1])
+
         precision, recall, _ = precision_recall_curve(x_test, y_test)
+        baseline = sum(x_test) / len(x_test)
         disp = PrecisionRecallDisplay(precision=precision, recall=recall)
+        disp = PrecisionRecallDisplay.from_predictions(x_test, y_test)
         disp = disp.plot()
+        plt.plot([0, 1], [baseline, baseline], color='orange', label= "Baseline ( AP = " + str(baseline) + " )", linestyle='--')
+        plt.ylim(0, 1)
     else:
         precision, recall, _ = precision_recall_curve(x_test, y_test)
+        plt.plot(0, baseline, color='orange', linestyle='--')
         disp = PrecisionRecallDisplay(precision=precision, recall=recall)
         disp = disp.plot()
+        ax = plt.gca()
+        baseline = sum(x_test) / len(x_test)
+        plt.ylim(0, 1)
+        print(baseline)
+        
     if iteration == "hold_out":
         disp.ax_.set_title('Precision-Recall Curve Iteration: ' +  iteration)
     else:
@@ -428,7 +432,7 @@ def save_results(result_path, mode, feature_selection, classifiers, iterations, 
                 save_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/", fpr, tpr, thresholds)
                 mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/", mode, models, true_label, pred, 0)
                 #HERE
-                mlpipeline_plot_pr(result_path + "/" + mode + "/" + i + "/" + classifier + "/", mode, models, true_label, pred, 0)
+                mlpipeline_plot_pr(result_path + "/" + mode + "/" + i + "/" + classifier + "/", mode, models, true_label, pred_proba, 0)
 
     elif mode == "cv_and_test":
 
@@ -453,7 +457,7 @@ def save_results(result_path, mode, feature_selection, classifiers, iterations, 
                     save_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/", fpr, tpr, thresholds)
                     mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/", "cv", models, true_label, pred, 0)
                     #HERE
-                    mlpipeline_plot_pr(result_path + "/" + mode + "/" + i + "/" + classifier + "/", "cv", models, true_label, pred, 0)
+                    mlpipeline_plot_pr(result_path + "/" + mode + "/" + i + "/" + classifier + "/", "cv", models, true_label, pred_proba, 0)
 
                 #hold_out
                 thresholds = make_thresholds(10000)
@@ -465,7 +469,7 @@ def save_results(result_path, mode, feature_selection, classifiers, iterations, 
                 save_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", fpr, tpr, thresholds)
                 mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", mode, models[i][classifier][0], results["holdout"][i][classifier]['true_label'], results["holdout"][i][classifier]['pred'], "hold_out")
                 #HERE
-                mlpipeline_plot_pr(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", mode, models[i][classifier][0], results["holdout"][i][classifier]['true_label'], results["holdout"][i][classifier]['pred'], "hold_out")
+                mlpipeline_plot_pr(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", mode, models[i][classifier][0], results["holdout"][i][classifier]['true_label'], results["holdout"][i][classifier]['pred_prob'], "hold_out")
                 #individual_sample_report(results, datasets, i, classifier, iterations, labels, result_path + "/" + mode + "/" + i + "/" + classifier + "/")
 
     else:
