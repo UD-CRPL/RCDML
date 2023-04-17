@@ -151,11 +151,11 @@ def load_labels_beatAML(url, drug_name):
 
 
 def load_dataset_target(url):
-    dataset = pd.read_csv(url + "genesdf.csv", sep=",")
-    #dataset = dataset.drop(["Vital Status"], axis=1)
-    dataset = dataset.set_index('Gene')    
-    #dataset = dataset.T
-    #dataset.to_csv(url + "genesdf.csv", sep=",")
+    dataset = pd.read_csv(url + "genesdf.txt", sep="\t")
+   # 
+    dataset = dataset.drop("Symbol", axis = 1)
+   # dataset.to_csv(url + "genesdf.txt", sep="\t")
+    dataset = dataset.set_index('Gene')
     samples = dataset.columns
     return dataset, samples
 

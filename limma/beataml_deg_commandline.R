@@ -112,7 +112,7 @@ setwd(args$`--dir`)
 
 ## Read in our data matrix
 #fulltable <- read.delim("read_count_matrix.txt", row.names = 1)
-fulltable <- read.delim("genesdf.csv", row.names = 1)
+fulltable <- read.delim("genesdf.txt", row.names = 1)
 print("data matrix is loaded")
 
 # Load our sample table and subset our data
