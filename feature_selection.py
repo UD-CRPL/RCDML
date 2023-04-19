@@ -205,13 +205,14 @@ def dge(path, dataset, labels, drug_name, project_info):
     dge_labels_file = path + drug_name + '_dge_input.txt'
     dge_labels = labels.copy()
     dge_labels = dge_labels.reset_index()
-    dge_labels["SID"] = [s.replace('-','X') for s in dge_labels["SID"]]
-    dge_labels['SID'] = 'X' + dge_labels['SID'].astype(str)
+    if project_info["project"].lower() == "beataml":
+        dge_labels["SID"] = [s.replace('-','X') for s in dge_labels["SID"]]
+        dge_labels['SID'] = 'X' + dge_labels['SID'].astype(str)
     dge_labels = dge_labels.rename(columns = {'SID':'Sample'})
     dge_labels = dge_labels.rename(columns = {'GROUP':'high'})
     dge_labels['low'] = np.logical_xor(dge_labels['high'],1).astype(int)
     dge_labels.to_csv(dge_labels_file, index=False, sep="\t")
-    #print(dge_labels)
+    print(dge_labels)
 
     import sys
     import subprocess

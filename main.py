@@ -71,7 +71,7 @@ def main():
     iterations = int(parameters['validation_iterations'])
     normalization = parameters['normalization']
 
-    fs_keys = ['dataset_path', 'dge_path', 'swapped_label', 'drug_feature_path', 'swapped_path']
+    fs_keys = ['project','dataset_path', 'dge_path', 'swapped_label', 'drug_feature_path', 'swapped_path']
     feature_selection_parameters = {key: parameters[key] for key in fs_keys}
 
     save_fc = int(parameters['feature_counter'])
