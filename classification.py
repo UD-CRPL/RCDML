@@ -1,5 +1,6 @@
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import RandomizedSearchCV
+from sklearn.model_selection import GridSearchCV
 import xgboost
 import lightgbm
 import numpy as np
@@ -38,35 +39,43 @@ lgbm_parameters = {
 
 # Classification wrapper used to select the correct classifier based on the configuration file selection
 def get_model(classifier, hyper_opt):
-
+    parameters = {}
     # Classifier: "rf"
     # Random Forest, scikit-learn
     if classifier == 'rf':
         model = RandomForestClassifier()
+        parameters = rf_parameters
         # Random Search CV used for Hyperparameter optimization, sets up the operation for
         # going through the list of hyperparameters above and selects best performing model
-        if hyper_opt == "random_search":
-            model = RandomizedSearchCV(model, rf_parameters, n_iter=30,
-                                    n_jobs=-1, verbose=0, cv=5,
-                                    scoring='roc_auc', refit=True, random_state=42)
+      #  if hyper_opt == "random_search":
+      #      model = RandomizedSearchCV(model, rf_parameters, n_iter=30,
+      #                              n_jobs=-1, verbose=0, cv=5,
+      #                              scoring='roc_auc', refit=True, random_state=42)
     # Classifier: "gdb"
     # Gradient Boosting, xgboost
     elif classifier == 'gdb':
         model = xgboost.XGBClassifier(eval_metric='logloss')
+        parameters = gdb_parameters
         # Random Search CV used for Hyperparameter optimization, sets up the operation for
         # going through the list of hyperparameters above and selects best performing model
-        if hyper_opt == "random_search":
-            model = RandomizedSearchCV(model, gdb_parameters, n_iter=30,
-                                            n_jobs=-1, verbose=0, cv=5,
-                                            scoring='roc_auc', refit=True, random_state=42)
+      #  if hyper_opt == "random_search":
+       #     model = RandomizedSearchCV(model, gdb_parameters, n_iter=30,
+       #                                     n_jobs=-1, verbose=0, cv=5,
+        #                                    scoring='roc_auc', refit=True, random_state=42)
     elif classifier == 'lgbm':
         model = lightgbm.LGBMClassifier()
+        parameters = lgbm_parameters
         # Random Search CV used for Hyperparameter optimization, sets up the operation for
         # going through the list of hyperparameters above and selects best performing model
+    if hyper_opt != "holdout":
         if hyper_opt == "random_search":
-            model = RandomizedSearchCV(model, lgbm_parameters, n_iter=30,
-                                            n_jobs=-1, verbose=0, cv=5,
-                                            scoring='roc_auc', refit=True, random_state=42)
+            model = RandomizedSearchCV(model, parameters, n_iter=30,
+                                        n_jobs=-1, verbose=0, cv=5,
+                                        scoring='roc_auc', refit=True, random_state=42)
+        elif hyper_opt == "grid_search":
+            model = GridSearchCV(model, parameters,
+                                        n_jobs=-1, verbose=0, cv=5,
+                                        scoring='roc_auc', refit=True)
     else:
         sys.exit("ERROR: Unrecognized classification technique in configuration file. Please pick one or more from these options: ['rf', 'gdb']")
     return model
@@ -91,16 +100,13 @@ def model_train(path, x, y, classifier, debug_mode, iteration, hyper_opt, best_p
     model = get_model(classifier, hyper_opt)
     x, y = prepare_dataset(x, y)
     if hyper_opt == "best":
-        #print(best_parameters[1])
-        #print(best_parameters)
         model.set_params(**best_parameters[1])
         # Transforms the dataset for correct scikit-learn format
     print("CLASSIFIER: " + classifier)
     # Trains the model
     model.fit(x, y)
 
-    if hyper_opt == "random_search":
-        print(hyper_opt)
+    if hyper_opt == "random_search" or hyper_opt == "grid_search":
         best_parameters = model.best_params_
 
     # DEBUG MODE
