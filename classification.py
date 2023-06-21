@@ -36,6 +36,12 @@ lgbm_parameters = {
 'reg_lambda': [0.1, 1.0, 5.0, 10.0, 50.0, 100.0],
 'n_estimators': [100, 150, 200, 250, 500, 750, 1000]}
 
+v_parameters = {
+    'eta': [0.1, 0.3],
+    'max_depth': [3, 6, 10],
+    'subsample': [0.5, 0.7, 0.9],
+    'n_estimators': [500, 1000, 2000]
+}
 
 # Classification wrapper used to select the correct classifier based on the configuration file selection
 def get_model(classifier, hyper_opt):
@@ -54,7 +60,7 @@ def get_model(classifier, hyper_opt):
     # Classifier: "gdb"
     # Gradient Boosting, xgboost
     elif classifier == 'gdb':
-        model = xgboost.XGBClassifier(eval_metric='logloss')
+        model = xgboost.XGBClassifier(eval_metric='logloss', verbose = 1)
         parameters = gdb_parameters
         # Random Search CV used for Hyperparameter optimization, sets up the operation for
         # going through the list of hyperparameters above and selects best performing model
@@ -69,13 +75,14 @@ def get_model(classifier, hyper_opt):
         # going through the list of hyperparameters above and selects best performing model
     if hyper_opt != "holdout":
         if hyper_opt == "random_search":
+           # import joblib
+           # from
             model = RandomizedSearchCV(model, parameters, n_iter=30,
                                         n_jobs=-1, verbose=0, cv=5,
                                         scoring='roc_auc', refit=True, random_state=42)
         elif hyper_opt == "grid_search":
-            model = GridSearchCV(model, parameters,
-                                        n_jobs=-1, verbose=0, cv=5,
-                                        scoring='roc_auc', refit=True)
+            model = GridSearchCV(model, v_parameters, n_jobs=-1, verbose=10, cv=5,
+                                        scoring='precision', refit=True)
     else:
         sys.exit("ERROR: Unrecognized classification technique in configuration file. Please pick one or more from these options: ['rf', 'gdb']")
     return model
@@ -104,6 +111,10 @@ def model_train(path, x, y, classifier, debug_mode, iteration, hyper_opt, best_p
         # Transforms the dataset for correct scikit-learn format
     print("CLASSIFIER: " + classifier)
     # Trains the model
+    #import joblib
+    #from dask.distributed import Client
+    #client = Client(processes = False)
+    #with joblib.parallel_backend("dask"):
     model.fit(x, y)
 
     if hyper_opt == "random_search" or hyper_opt == "grid_search":

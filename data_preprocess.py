@@ -12,6 +12,8 @@ def load_dataset(url, project, normalization):
         dataset, samples = load_dataset_beatAML(url, normalization)
     elif project.lower() == "target":
         dataset, samples = load_dataset_target(url)
+    elif project.lower() == "pd":
+        dataset, samples = load_dataset_pd(url)
     else:
         dataset, samples = load_dataset_rnaseq(url)
     return dataset, samples
@@ -23,6 +25,8 @@ def load_labels(url, project, drug_name):
         labels = load_labels_beatAML(url, drug_name)
     elif project.lower() == "target":
         labels = load_labels_target(url)
+    elif project.lower() == "pd":
+        labels = load_labels_pd(url)
     else:
         labels = load_labels_rnaseq(url)
     return labels
@@ -164,7 +168,22 @@ def load_labels_target(url):
     labels['GROUP'] = labels['GROUP'].apply(lambda x: vital_to_binary(x))
     return labels
     
+def load_dataset_pd(url):
+    dataset = pd.read_csv(url + "snp_matrix.csv", sep="\t")
+    dataset["#CHROM-POS"] = dataset["#CHROM"].astype(str) + "-" + dataset["POS"].astype(str)
+    dataset.drop("#CHROM", axis = 1)
+    dataset.drop("POS", axis = 1)
+    dataset = dataset.set_index('#CHROM-POS')
+    samples = dataset.columns
+    print(dataset)
+    return dataset, samples
 
+def load_labels_pd(url):
+    labels = pd.read_csv(url + "00-PD-TreatmentCodeTable-ALL153.csv", usecols = ["SID", "GROUP"])
+    labels['GROUP'] = labels['GROUP'].apply(lambda x: group_to_binary(x))
+    print(labels)
+    return labels
+	
 # Creates new directory and subdirectories if given a path and the directory does not exist
 # Used extensively to save results
 def make_result_dir(path):

@@ -42,6 +42,8 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             print("PERFORMING DGE: ")
             dataset = dge(path + fs + "/" + classifiers[0] + "/" + iteration + "/", input["x_train"].T, input["y_train"], drug_name, project_info)
 
+        elif fs == 'chi2':
+            dataset = chi_square(input["x_train"], input["x_test"], feature_size)
             # FEATURE SWAPPING EXPERIMENT
         elif fs == 'swap':
             print("PERFORMING FEATURE SWAPPING: ")
@@ -131,6 +133,9 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             print("PERFORMING FEATURE SWAPPING: " + str(iteration) + "/" + str(total_iterations))
             dataset = from_feature_list(path, input["x_train"][iteration].T, input["y_train"][iteration], iteration, project_info)
 
+        elif fs == 'chi2':
+            dataset = chi_square(input["x_train"], input["x_test"], feature_size)
+
             # SELECT RANDOM FEATURES
         elif fs == 'random':
             print("SELECTING RANDOM FEATURES: " + str(iteration) + "/" + str(total_iterations))
@@ -205,14 +210,13 @@ def dge(path, dataset, labels, drug_name, project_info):
     dge_labels_file = path + drug_name + '_dge_input.txt'
     dge_labels = labels.copy()
     dge_labels = dge_labels.reset_index()
-    if project_info["project"].lower() == "beataml":
-        dge_labels["SID"] = [s.replace('-','X') for s in dge_labels["SID"]]
-        dge_labels['SID'] = 'X' + dge_labels['SID'].astype(str)
+    dge_labels["SID"] = [s.replace('-','X') for s in dge_labels["SID"]]
+    dge_labels['SID'] = 'X' + dge_labels['SID'].astype(str)
     dge_labels = dge_labels.rename(columns = {'SID':'Sample'})
     dge_labels = dge_labels.rename(columns = {'GROUP':'high'})
     dge_labels['low'] = np.logical_xor(dge_labels['high'],1).astype(int)
     dge_labels.to_csv(dge_labels_file, index=False, sep="\t")
-    print(dge_labels)
+    #print(dge_labels)
 
     import sys
     import subprocess
@@ -247,6 +251,18 @@ def dge(path, dataset, labels, drug_name, project_info):
     filtered = dataset[feature_set[drug_name].values]
     return filtered
 
+def chi_square(dataset, labels, feature_size):
+    from sklearn.feature_selection import chi2
+    chi_scores, p_values = chi2(dataset, labels)
+    p_values = pd.Series(chi_scores[1],index = dataset.columns)
+    p_values.sort_values(ascending = False , inplace = True)
+    p_values.plot.bar()
+    plt.show()
+
+    sys.exit("Kill")
+
+    return dataset
+
 # Feature Selection: "pca"
 # Performs principal component analysis on the dataset, from the scikit-learn package
 def principal_component_analysis(dataset, datatest, feature_size):
@@ -266,7 +282,7 @@ def shapley(path, dataset, labels, feature_size, plot):
     dataset = dataset.T
     # Set xgboost model to run the shap value calculations using default parameters
     # This can be changed to other ensemble models that the shap package supports (Random Forest, etc)
-    model = xgboost.XGBClassifier(eval_metric='logloss')
+    model = xgboost.XGBClassifier(eval_metric='logloss', verbose = 1)
     model.fit(dataset, labels)
     # initializes the shap JavaScript visualization
    # shap.initjs()
@@ -316,4 +332,10 @@ def build_feature_counter(dataset):
 def add_to_feature_counter(features, counter):
     for feature in features:
         counter[feature] = counter[feature] + 1
+    return
+
+def hierarchical_clustering_heatmap(data, iteration):
+    sns.clustermap(data)
+    plt.savefig(path + "/hierarchical_clustering.png", dpi=100)
+    plt.clf()
     return
