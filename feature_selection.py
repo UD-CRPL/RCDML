@@ -284,7 +284,7 @@ def shapley(path, dataset, labels, feature_size, plot):
     dataset = dataset.T
     # Set xgboost model to run the shap value calculations using default parameters
     # This can be changed to other ensemble models that the shap package supports (Random Forest, etc)
-    model = xgboost.XGBClassifier(eval_metric='logloss', verbose = 1)
+    model = xgboost.XGBClassifier(eval_metric='logloss', verbosity = 3)
     model.fit(dataset, labels)
     # initializes the shap JavaScript visualization
    # shap.initjs()

@@ -49,7 +49,7 @@ def get_model(classifier, hyper_opt):
     # Classifier: "rf"
     # Random Forest, scikit-learn
     if classifier == 'rf':
-        model = RandomForestClassifier()
+        model = RandomForestClassifier(verbose = 10)
         parameters = rf_parameters
         # Random Search CV used for Hyperparameter optimization, sets up the operation for
         # going through the list of hyperparameters above and selects best performing model
@@ -60,8 +60,9 @@ def get_model(classifier, hyper_opt):
     # Classifier: "gdb"
     # Gradient Boosting, xgboost
     elif classifier == 'gdb':
-        model = xgboost.XGBClassifier(eval_metric='logloss', verbose = 1)
-        parameters = gdb_parameters
+        model = xgboost.XGBClassifier(eval_metric='logloss', verbosity = 3)
+       # parameters = gdb_parameters
+        parameters = v_parameters
         # Random Search CV used for Hyperparameter optimization, sets up the operation for
         # going through the list of hyperparameters above and selects best performing model
       #  if hyper_opt == "random_search":
@@ -69,8 +70,9 @@ def get_model(classifier, hyper_opt):
        #                                     n_jobs=-1, verbose=0, cv=5,
         #                                    scoring='roc_auc', refit=True, random_state=42)
     elif classifier == 'lgbm':
-        model = lightgbm.LGBMClassifier()
-        parameters = lgbm_parameters
+        model = lightgbm.LGBMClassifier(verbose = 1)
+     #   parameters = lgbm_parameters
+        parameters = v_parameters
         # Random Search CV used for Hyperparameter optimization, sets up the operation for
         # going through the list of hyperparameters above and selects best performing model
     if hyper_opt != "holdout":
@@ -78,10 +80,10 @@ def get_model(classifier, hyper_opt):
            # import joblib
            # from
             model = RandomizedSearchCV(model, parameters, n_iter=30,
-                                        n_jobs=-1, verbose=0, cv=5,
+                                        n_jobs=-1, verbose=10, cv=5,
                                         scoring='roc_auc', refit=True, random_state=42)
         elif hyper_opt == "grid_search":
-            model = GridSearchCV(model, v_parameters, n_jobs=-1, verbose=10, cv=5,
+            model = GridSearchCV(model, parameters, n_jobs=-1, verbose=10, cv=5,
                                         scoring='precision', refit=True)
     else:
         sys.exit("ERROR: Unrecognized classification technique in configuration file. Please pick one or more from these options: ['rf', 'gdb']")
