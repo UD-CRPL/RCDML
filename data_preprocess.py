@@ -13,7 +13,7 @@ def load_dataset(url, project, normalization):
     elif project.lower() == "target":
         dataset, samples = load_dataset_target(url)
     elif project.lower() == "pd":
-        dataset, samples = load_dataset_pd(url)
+        dataset, samples = load_dataset_target(url, normalization)
     else:
         dataset, samples = load_dataset_rnaseq(url)
     return dataset, samples
@@ -154,18 +154,35 @@ def load_labels_beatAML(url, drug_name):
     return labels
 
 
-def load_dataset_target(url):
-    dataset = pd.read_csv(url + "genesdf.txt", sep="\t")
-   # 
-    dataset = dataset.drop("Symbol", axis = 1)
+def load_dataset_target(url, normalization):
+    if normalization == "cpm":
+        dataset = pd.read_csv(url + "genesdf.txt", sep="\t")
+    
+        dataset = dataset.drop("Symbol", axis = 1)
    # dataset.to_csv(url + "genesdf.txt", sep="\t")
-    dataset = dataset.set_index('Gene')
-    samples = dataset.columns
+        dataset = dataset.set_index('Gene')
+        samples = dataset.columns
+    elif normalization == "rpkm":
+        import re
+        dataset = pd.read_csv(url + "TARGET_NBM_AML_QuantileNormalized_RPKM.txt", sep="\t")
+        cols = dataset.columns
+        pattern = "TARGET-[0-9][0-9]-(...*)-[0-9][0-9]A-[0-9][0-9]R"
+        cols = {string: re.search(pattern, string)[1] for string in cols[2:]}
+        dataset = dataset.rename(columns=cols)
+        dataset = dataset.drop("gene_name", axis = 1)
+        dataset = dataset.set_index("gene_id")
+        print(dataset)
+        samples = dataset.columns
+      #  sys.exit("Error message")
+    else:
+        sys.exit("ERROR BeatAML Project: Dataset requested not available. List of available datasets are ['cpm', 'rpkm']")
+    
     return dataset, samples
 
 def load_labels_target(url):
     labels = pd.read_csv(url + "target.csv")
     labels['GROUP'] = labels['GROUP'].apply(lambda x: vital_to_binary(x))
+    print(labels)
     return labels
     
 def load_dataset_pd(url):

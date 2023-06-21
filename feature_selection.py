@@ -43,7 +43,7 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             dataset = dge(path + fs + "/" + classifiers[0] + "/" + iteration + "/", input["x_train"].T, input["y_train"], drug_name, project_info)
 
         elif fs == 'chi2':
-            dataset = chi_square(input["x_train"], input["x_test"], feature_size)
+            dataset = chi_square(input["x_train"], input["y_train"], feature_size)
             # FEATURE SWAPPING EXPERIMENT
         elif fs == 'swap':
             print("PERFORMING FEATURE SWAPPING: ")
@@ -134,7 +134,7 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             dataset = from_feature_list(path, input["x_train"][iteration].T, input["y_train"][iteration], iteration, project_info)
 
         elif fs == 'chi2':
-            dataset = chi_square(input["x_train"], input["x_test"], feature_size)
+            dataset = chi_square(input["x_train"][iteration].T, input["y_train"][iteration], feature_size)
 
             # SELECT RANDOM FEATURES
         elif fs == 'random':
@@ -253,14 +253,16 @@ def dge(path, dataset, labels, drug_name, project_info):
 
 def chi_square(dataset, labels, feature_size):
     from sklearn.feature_selection import chi2
+    print(dataset)
+    print(labels)
     chi_scores, p_values = chi2(dataset, labels)
     p_values = pd.Series(chi_scores[1],index = dataset.columns)
     p_values.sort_values(ascending = False , inplace = True)
-    p_values.plot.bar()
-    plt.show()
+    print(p_values)
+   # p_values.plot.bar()
+   # plt.show()
 
-    sys.exit("Kill")
-
+   # sys.exit("Kill")
     return dataset
 
 # Feature Selection: "pca"
@@ -322,6 +324,7 @@ def plot_model_importance(path, feature_size, model):
     figure.set_size_inches(15, 10)
     plt.savefig(path + "/model_feature_importance.png")
     plt.clf()
+    return
 
 # Creates the feature counter dictionary for all features in the dataset
 def build_feature_counter(dataset):

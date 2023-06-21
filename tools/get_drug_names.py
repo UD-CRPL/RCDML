@@ -25,20 +25,20 @@ def get_drug_names(data_path, drug_family):
     not_in_family =  drug_set - in_family
     return in_family, not_in_family, drug_set
 
-family, match, drug_list = get_drug_names(data_path, drug_family)
+#family, match, drug_list = get_drug_names(data_path, drug_family)
 
 def rtk_type_iii_match(data_path, family):
     rtk_fam = get_drug_names(data_path, "RTK_TYPE_III")[0]
     match = set(rtk_fam) & set(family)
     return match
 
-rtk3_match = rtk_type_iii_match(data_path, family)
+#rtk3_match = rtk_type_iii_match(data_path, family)
 
-print("DRUGS IN FAMILY: ", len(family))
-print(family)
+#print("DRUGS IN FAMILY: ", len(family))
+#print(family)
 
-print("DRUGS NOT IN FAMILY: ", len(match))
-print(match)
+#print("DRUGS NOT IN FAMILY: ", len(match))
+#print(match)
 
-print("MATCH WITH RTK-TYPE-III: ", len(rtk3_match))
-print(rtk3_match)
+#print("MATCH WITH RTK-TYPE-III: ", len(rtk3_match))
+#print(rtk3_match)
