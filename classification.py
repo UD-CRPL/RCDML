@@ -96,7 +96,7 @@ def prepare_dataset(x, y):
     return x, y
 
 # Performs the classifier training using the training dataset
-def model_train(path, x, y, classifier, debug_mode, iteration, hyper_opt, best_parameters):
+def model_train(path, x, y, classifier, debug_mode, iteration, hyper_opt, best_parameters, client):
     # DEBUG MODE
     if debug_mode:
         # Saves input training dataset and labels
@@ -113,11 +113,11 @@ def model_train(path, x, y, classifier, debug_mode, iteration, hyper_opt, best_p
         # Transforms the dataset for correct scikit-learn format
     print("CLASSIFIER: " + classifier)
     # Trains the model
-    #import joblib
+    import joblib
     #from dask.distributed import Client
     #client = Client(processes = False)
-    #with joblib.parallel_backend("dask"):
-    model.fit(x, y)
+    with joblib.parallel_backend("dask"):
+        model.fit(x, y)
 
     if hyper_opt == "random_search" or hyper_opt == "grid_search":
         best_parameters = model.best_params_

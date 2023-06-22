@@ -9,7 +9,7 @@ from xgboost import plot_importance
 import sys
 
 # Feature selection wrapper, chooses the correct feature selection technique based on the configuration file parameters
-def feature_selection(path, fs, iteration, input, labels, feature_size, classifiers, feature_counter, debug_mode, project_info, drug_name):
+def feature_selection(path, fs, iteration, input, labels, feature_size, classifiers, feature_counter, debug_mode, project_info, drug_name, client):
 
     if iteration == "hold_out":
 
@@ -30,7 +30,7 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             # SHAPLEY VALUE FEATURE SELECTION
         if fs == 'shap':
             print("PERFORMING SHAP: ")
-            dataset = shapley(path + fs + "/" + classifiers[0] + "/" + iteration, input["x_train"], input["y_train"], feature_size, 1)
+            dataset = shapley(path + fs + "/" + classifiers[0] + "/" + iteration, input["x_train"], input["y_train"], feature_size, 1, client)
 
             # PRINCIPAL COMPONENT ANALYSIS
         elif fs == 'pca':
@@ -116,7 +116,7 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             # SHAPLEY VALUE FEATURE SELECTION
         if fs == 'shap':
             print("PERFORMING SHAP: " + str(iteration) + "/" + str(total_iterations))
-            dataset = shapley(path + fs + "/" + classifiers[0] + "/" + str(iteration), input["x_train"][iteration], input["y_train"][iteration], feature_size, 1)
+            dataset = shapley(path + fs + "/" + classifiers[0] + "/" + str(iteration), input["x_train"][iteration], input["y_train"][iteration], feature_size, 1, client)
 
             # PRINCIPAL COMPONENT ANALYSIS
         elif fs == 'pca':
@@ -280,23 +280,32 @@ def principal_component_analysis(dataset, datatest, feature_size):
 
 # Feature Selection: "shap"
 # Performs the shapley value feature selection technique discussed in the paper
-def shapley(path, dataset, labels, feature_size, plot):
+def shapley(path, dataset, labels, feature_size, plot, client):
     dataset = dataset.T
     # Set xgboost model to run the shap value calculations using default parameters
     # This can be changed to other ensemble models that the shap package supports (Random Forest, etc)
-    model = xgboost.XGBClassifier(eval_metric='logloss', verbosity = 3)
-    model.fit(dataset, labels)
+  #  model = xgboost.XGBClassifier(eval_metric='logloss', verbosity = 3)
+    from sklearn.ensemble import RandomForestClassifier
+    model = RandomForestClassifier(verbose = 10, criterion = "log_loss")
+    model.client = client
+    import joblib
+    with joblib.parallel_backend("dask"):
+        model.fit(dataset, labels)
     # initializes the shap JavaScript visualization
    # shap.initjs()
     # Calculates the shap value contributions for
     shap_values = shap.TreeExplainer(model).shap_values(dataset)
+    print(shap_values)
     # Removes direction to the shap value marginal contribution by taking the absolute value
     # We only care about magnitude to select features
     distribution = np.absolute(shap_values)
     # Takes the mean of the shap value contribution scores acrosss all samples
     # This provides a single shap value contribution for each feature
     distribution = distribution.mean(axis=0)
+
+    print(distribution)
     # If selected, plot the SHAP feature importance summary plot
+    plot = 0
     if(plot):
         plot_shap(path, shap_values, dataset)
         plot_model_importance(path, feature_size, model)
@@ -319,7 +328,7 @@ def plot_shap(path, shap_values, dataset):
   
 
 def plot_model_importance(path, feature_size, model):
-    xgboost.plot_importance(model, max_num_features=feature_size)
+    #xgboost.plot_importance(model, max_num_features=feature_size)
     figure = plt.gcf()
     figure.set_size_inches(15, 10)
     plt.savefig(path + "/model_feature_importance.png")

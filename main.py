@@ -116,6 +116,13 @@ def main():
 
     datasets, iterations = val.split_dataset(validation, dataset, labels, train_set_split, iterations)
 
+     # NOTE: IF YOU WANT MULTITHREADING, PASS IN process="False" AS AN ARGUMENT FOR Client() FUNCTION
+    from dask.distributed import Client
+    #import joblib
+    url = "/Users/mf0082/Documents/genpro/"
+    c = Client(local_directory=url)
+  #  c = None
+
     if validation == "cv_and_test":
 
     # CV HAPPENS FIRST
@@ -125,11 +132,11 @@ def main():
                     dp.make_result_dir(result_path + date + "/" + validation + "/" + fs + "/" + classifier + "/" + str(iteration) + "/")
 
         print("CV - PERFORMING FEATURE SELECTION: ")
-        datasets_cv = {fs:[feat.feature_selection(result_path + date + "/" + validation + "/", fs, iteration, datasets, labels, feature_size, classifiers, feature_counter, debug['feature_selection'], feature_selection_parameters, drug_name) for iteration in range(0, iterations)] for fs in feature_selection}
+        datasets_cv = {fs:[feat.feature_selection(result_path + date + "/" + validation + "/", fs, iteration, datasets, labels, feature_size, classifiers, feature_counter, debug['feature_selection'], feature_selection_parameters, drug_name, c) for iteration in range(0, iterations)] for fs in feature_selection}
 
         print("CV - PERFORMING MODEL TRAINING: ")
         best_parameters = {}
-        models = {fs: {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + fs + "/", datasets_cv[fs][iteration]['x_train'], datasets_cv[fs][iteration]['y_train'], classifier, debug['classification'], iteration, hyper_opt, best_parameters) for iteration in range(0, iterations)] for classifier in classifiers} if fs != "random" else {classifier: ["no random cv" for iteration in range(0, iterations)] for classifier in classifiers}  for fs in feature_selection}
+        models = {fs: {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + fs + "/", datasets_cv[fs][iteration]['x_train'], datasets_cv[fs][iteration]['y_train'], classifier, debug['classification'], iteration, hyper_opt, best_parameters, c) for iteration in range(0, iterations)] for classifier in classifiers} if fs != "random" else {classifier: ["no random cv" for iteration in range(0, iterations)] for classifier in classifiers}  for fs in feature_selection}
         print("CV - FINISHED TRAINING MODELS")
 
         print("CV - GATHERING RESULTS")
@@ -151,11 +158,11 @@ def main():
 
         print("HOLD-OUT - PERFORMING FEATURE SELECTION: ")
       #  print(datasets)
-        datasets = {fs:feat.feature_selection(result_path + date + "/" + validation + "/", fs, "hold_out", datasets['hold_out'], labels, feature_size, classifiers, feature_counter, debug['feature_selection'], feature_selection_parameters, drug_name) for fs in feature_selection}
+        datasets = {fs:feat.feature_selection(result_path + date + "/" + validation + "/", fs, "hold_out", datasets['hold_out'], labels, feature_size, classifiers, feature_counter, debug['feature_selection'], feature_selection_parameters, drug_name, c) for fs in feature_selection}
 
         print("HOLD-OUT - PERFORMING MODEL TRAINING: ")
 
-        models = {j: {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + j + "/", datasets[j]['x_train'], datasets[j]['y_train'], classifier, debug['classification'], "hold_out", "best", models[j][classifier][i]) for i in range(0, iterations)] for classifier in classifiers} if j != "random" else {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + j + "/", datasets[j]['x_train'], datasets[j]['y_train'], classifier, debug['classification'], "hold_out", "none", models[j][classifier][i]) for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
+        models = {j: {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + j + "/", datasets[j]['x_train'], datasets[j]['y_train'], classifier, debug['classification'], "hold_out", "best", models[j][classifier][i], c) for i in range(0, iterations)] for classifier in classifiers} if j != "random" else {classifier: [classification.model_train(result_path + date + "/" + validation + "/" + j + "/", datasets[j]['x_train'], datasets[j]['y_train'], classifier, debug['classification'], "hold_out", "none", models[j][classifier][i]) for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
         holdout_results = {j: {classifier: [val.validate_model(models[j][classifier][i][0], datasets[j]['x_test'], datasets[j]['y_test'], 0.50, validation) for i in range(0, iterations)] for classifier in classifiers} for j in feature_selection}
 
         models, holdout_results = val.pick_top_performer(models, cv_results, holdout_results, classifiers, feature_selection, iterations)

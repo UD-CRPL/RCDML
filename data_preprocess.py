@@ -11,9 +11,9 @@ def load_dataset(url, project, normalization):
     if project.lower() == "beataml":
         dataset, samples = load_dataset_beatAML(url, normalization)
     elif project.lower() == "target":
-        dataset, samples = load_dataset_target(url)
-    elif project.lower() == "pd":
         dataset, samples = load_dataset_target(url, normalization)
+    elif project.lower() == "pd":
+        dataset, samples = load_dataset_pd(url)
     else:
         dataset, samples = load_dataset_rnaseq(url)
     return dataset, samples
