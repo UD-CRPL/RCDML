@@ -1,11 +1,13 @@
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import RandomizedSearchCV
-from sklearn.model_selection import GridSearchCV
 import xgboost
 import lightgbm
 import numpy as np
 import pandas as pd
 import data_preprocess as dp
+import cudf
+from cuml.ensemble import RandomForestClassifier as cuRFC
+import time
 
 # List of hyperparameters to search for the Random Forest scikit-learn implementation
 rf_parameters = {
@@ -36,55 +38,40 @@ lgbm_parameters = {
 'reg_lambda': [0.1, 1.0, 5.0, 10.0, 50.0, 100.0],
 'n_estimators': [100, 150, 200, 250, 500, 750, 1000]}
 
-v_parameters = {
-    'eta': [0.1, 0.3],
-    'max_depth': [3, 6, 10],
-    'subsample': [0.5, 0.7, 0.9],
-    'n_estimators': [500, 1000, 2000]
-}
 
 # Classification wrapper used to select the correct classifier based on the configuration file selection
 def get_model(classifier, hyper_opt):
-    parameters = {}
+
     # Classifier: "rf"
     # Random Forest, scikit-learn
     if classifier == 'rf':
-        model = RandomForestClassifier(verbose = 10)
-        parameters = rf_parameters
+        #model = RandomForestClassifier()
+        model = cuRFC(output_type='numpy')
         # Random Search CV used for Hyperparameter optimization, sets up the operation for
         # going through the list of hyperparameters above and selects best performing model
-      #  if hyper_opt == "random_search":
-      #      model = RandomizedSearchCV(model, rf_parameters, n_iter=30,
-      #                              n_jobs=-1, verbose=0, cv=5,
-      #                              scoring='roc_auc', refit=True, random_state=42)
+        if hyper_opt == "random_search":
+            model = RandomizedSearchCV(model, rf_parameters, n_iter=30,
+                                    n_jobs=-1, verbose=0, cv=5,
+                                    scoring='roc_auc', refit=True, random_state=42)
     # Classifier: "gdb"
     # Gradient Boosting, xgboost
     elif classifier == 'gdb':
-        model = xgboost.XGBClassifier(eval_metric='logloss', verbosity = 3)
-       # parameters = gdb_parameters
-        parameters = v_parameters
+        model = xgboost.XGBClassifier(eval_metric='logloss')
+       # model = xgboost.XGBClassifier(eval_metric='logloss')
         # Random Search CV used for Hyperparameter optimization, sets up the operation for
         # going through the list of hyperparameters above and selects best performing model
-      #  if hyper_opt == "random_search":
-       #     model = RandomizedSearchCV(model, gdb_parameters, n_iter=30,
-       #                                     n_jobs=-1, verbose=0, cv=5,
-        #                                    scoring='roc_auc', refit=True, random_state=42)
-    elif classifier == 'lgbm':
-        model = lightgbm.LGBMClassifier(verbose = 1)
-     #   parameters = lgbm_parameters
-        parameters = v_parameters
-        # Random Search CV used for Hyperparameter optimization, sets up the operation for
-        # going through the list of hyperparameters above and selects best performing model
-    if hyper_opt != "holdout":
         if hyper_opt == "random_search":
-           # import joblib
-           # from
-            model = RandomizedSearchCV(model, parameters, n_iter=30,
-                                        n_jobs=-1, verbose=10, cv=5,
-                                        scoring='roc_auc', refit=True, random_state=42)
-        elif hyper_opt == "grid_search":
-            model = GridSearchCV(model, parameters, n_jobs=-1, verbose=10, cv=5,
-                                        scoring='precision', refit=True)
+            model = RandomizedSearchCV(model, gdb_parameters, n_iter=30,
+                                            n_jobs=-1, verbose=0, cv=5,
+                                            scoring='roc_auc', refit=True, random_state=42)
+    elif classifier == 'lgbm':
+        model = lightgbm.LGBMClassifier()
+        # Random Search CV used for Hyperparameter optimization, sets up the operation for
+        # going through the list of hyperparameters above and selects best performing model
+        if hyper_opt == "random_search":
+            model = RandomizedSearchCV(model, lgbm_parameters, n_iter=30,
+                                            n_jobs=-1, verbose=0, cv=5,
+                                            scoring='roc_auc', refit=True, random_state=42)
     else:
         sys.exit("ERROR: Unrecognized classification technique in configuration file. Please pick one or more from these options: ['rf', 'gdb']")
     return model
@@ -93,6 +80,11 @@ def get_model(classifier, hyper_opt):
 def prepare_dataset(x, y):
     x = x.T
     y = y.apply(lambda x: dp.bool_to_binary(x))
+    start = time.time()
+    x = cudf.from_pandas(x)
+    y = cudf.from_pandas(y)
+    end = time.time()
+    print("COPY ARRAY: ", end - start)
     return x, y
 
 # Performs the classifier training using the training dataset
@@ -109,21 +101,19 @@ def model_train(path, x, y, classifier, debug_mode, iteration, hyper_opt, best_p
     model = get_model(classifier, hyper_opt)
     x, y = prepare_dataset(x, y)
     if hyper_opt == "best":
+        #print(best_parameters[1])
+        #print(best_parameters)
         model.set_params(**best_parameters[1])
         # Transforms the dataset for correct scikit-learn format
     print("CLASSIFIER: " + classifier)
     # Trains the model
-    #import joblib
-    #from dask.distributed import Client
-    #client = Client(processes = False)
-    #with joblib.parallel_backend("dask"):
-    import time
     start = time.time()
     model.fit(x, y)
     end = time.time()
     print("CLASSIFIER TRAINING TIME: ", end - start)
 
-    if hyper_opt == "random_search" or hyper_opt == "grid_search":
+    if hyper_opt == "random_search":
+        print(hyper_opt)
         best_parameters = model.best_params_
 
     # DEBUG MODE
