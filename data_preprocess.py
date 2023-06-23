@@ -10,6 +10,10 @@ def load_dataset(url, project, normalization):
     # Loads BeatAML data
     if project.lower() == "beataml":
         dataset, samples = load_dataset_beatAML(url, normalization)
+    elif project.lower() == "target":
+        dataset, samples = load_dataset_target(url, normalization)
+    elif project.lower() == "pd":
+        dataset, samples = load_dataset_pd(url)
     else:
         dataset, samples = load_dataset_rnaseq(url)
     return dataset, samples
@@ -19,6 +23,10 @@ def load_labels(url, project, drug_name):
     # Loads BeatAML data
     if project.lower() == "beataml":
         labels = load_labels_beatAML(url, drug_name)
+    elif project.lower() == "target":
+        labels = load_labels_target(url)
+    elif project.lower() == "pd":
+        labels = load_labels_pd(url)
     else:
         labels = load_labels_rnaseq(url)
     return labels
@@ -87,6 +95,12 @@ def auc_to_binary(value, q1, q3):
         return 0
     else:
         return -1
+    
+def vital_to_binary(value):
+    if value == "Alive":
+        return 1 
+    else:
+        return 0
 
 ### PROJECT DATASETS
 
@@ -139,6 +153,55 @@ def load_labels_beatAML(url, drug_name):
         sys.exit("ERROR beatAML Project: Labels requested not available. List of available labels are ['UNC2025A', 'original']")
     return labels
 
+
+def load_dataset_target(url, normalization):
+    if normalization == "cpm":
+        dataset = pd.read_csv(url + "genesdf.txt", sep="\t")
+    
+        dataset = dataset.drop("Symbol", axis = 1)
+   # dataset.to_csv(url + "genesdf.txt", sep="\t")
+        dataset = dataset.set_index('Gene')
+        samples = dataset.columns
+    elif normalization == "rpkm":
+        import re
+        dataset = pd.read_csv(url + "TARGET_NBM_AML_QuantileNormalized_RPKM.txt", sep="\t")
+        cols = dataset.columns
+        pattern = "TARGET-[0-9][0-9]-(...*)-[0-9][0-9]A-[0-9][0-9]R"
+        cols = {string: re.search(pattern, string)[1] for string in cols[2:]}
+        dataset = dataset.rename(columns=cols)
+        dataset = dataset.drop("gene_name", axis = 1)
+        dataset = dataset.set_index("gene_id")
+        print(dataset)
+        samples = dataset.columns
+      #  sys.exit("Error message")
+    else:
+        sys.exit("ERROR BeatAML Project: Dataset requested not available. List of available datasets are ['cpm', 'rpkm']")
+    
+    return dataset, samples
+
+def load_labels_target(url):
+    labels = pd.read_csv(url + "target.csv")
+    labels['GROUP'] = labels['GROUP'].apply(lambda x: vital_to_binary(x))
+    print(labels)
+    return labels
+    
+def load_dataset_pd(url):
+    dataset = pd.read_csv(url + "snp_matrix.csv", sep="\t")
+    dataset["#CHROM-POS"] = dataset["#CHROM"].astype(str) + "-" + dataset["POS"].astype(str)
+    dataset.drop("#CHROM", axis = 1)
+    dataset.drop("POS", axis = 1)
+    dataset = dataset.set_index('#CHROM-POS')
+    samples = dataset.columns
+    print(dataset)
+    return dataset, samples
+
+def load_labels_pd(url):
+    labels = pd.read_csv(url + "00-PD-TreatmentCodeTable-ALL153.csv", usecols = ["SID", "GROUP"])
+    labels['GROUP'] = labels['GROUP'].apply(lambda x: group_to_binary(x))
+    labels['SID'] = labels['SID'].apply(lambda x: x.replace('.','-'))
+    print(labels)
+    return labels
+	
 # Creates new directory and subdirectories if given a path and the directory does not exist
 # Used extensively to save results
 def make_result_dir(path):
@@ -178,3 +241,29 @@ def simulate_data(dataset, labels, simulation_size):
     labels = pd.concat([labels,  extra_samples], axis=0)
 
     return dataset, labels, dataset.columns
+
+def balance_dataset(X_imbalanced, y_imbalanced):
+    df = X_imbalanced.T
+    df["GROUP"] = y_imbalanced.set_index("SID")
+    df_majority = df[df.GROUP==1]
+    df_minority = df[df.GROUP==0]
+ 
+    # Downsample majority class
+    df_majority_downsampled = resample(df_majority, 
+                                 replace=False,    # sample without replacement
+                                 n_samples=len(df_minority),     # to match minority class
+                                 random_state=123) # reproducible results
+ 
+    # Combine minority class with downsampled majority class
+    df_downsampled = pd.concat([df_majority_downsampled, df_minority])
+ 
+    # Display new class counts
+    print(df_downsampled.GROUP.value_counts())
+    
+    y_balanced = df_downsampled["GROUP"]
+    y_balanced = y_balanced.reset_index()
+    y_balanced = y_balanced.rename(columns={"index": "SID"})
+    X_balanced = df_downsampled.drop('GROUP', axis=1).T
+    
+    print(y_balanced)
+    return X_balanced, y_balanced, X_balanced.columns

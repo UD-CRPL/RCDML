@@ -114,6 +114,7 @@ def get_missing(path, drug_list, combination, iterations, run_info):
                         missing.append(drug)
                         ismissing = True
                 else:
+                   # print(path  + "/" + str(i) +  "/" + drug + "/" + run_info["date"] + run_info["validation"] + combo[0] + "/" + combo[1] + "/hold_out/")
                     if not Path(path  + "/" + str(i) +  "/" + drug + "/" + run_info["date"] + run_info["validation"] + combo[0] + "/" + combo[1] + "/results.tsv").exists():
                         missing.append(drug)
                         ismissing = True
@@ -124,15 +125,16 @@ def make_result_dir(path):
     Path(path).mkdir(parents=True, exist_ok=True)
 
 iterations = 10
-run_name = "rtk-type-iii"
-data_path = "/Users/mf0082/Documents/Bioinformatics_paper/results/beatAML/" + run_name
+run_name = "/pr_results/unbalanced/"
+data_path = "/mnt/d/school_and_work/target/results/target/" + run_name
 #drug_list = generate_drug_list('/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/', 'RTK_TYPE_III')
 #drug_list = ["Crenolanib","Dasatinib", "Foretinib", "Regorafenib"]
-drug_list = list(get_drug_names("/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/", "RTK_TYPE_III")[0])
+#drug_list = list(get_drug_names("/Users/mf0082/Documents/Nemours/AML/beatAML/dataset/", "RTK_TYPE_III")[0])
+drug_list = ["Sorafenib"]
 feature_selection = ['pca', 'shap', 'dge']
 classifiers = ["rf", 'gdb', 'lgbm']
 validation = "/cv_and_test/"
-date = "/12-02-2022/"
+date = "/06-08-2023/"
 hold_out = False
 
 run_info = {"fs":feature_selection, "classifiers":classifiers, "validation":validation, "date":date, "hold_out": hold_out}

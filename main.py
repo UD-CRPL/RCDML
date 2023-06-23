@@ -58,7 +58,7 @@ def main():
     run_name = parameters['run_name']
     project = parameters['project']
     hyper_opt = parameters['hyper_opt']
-
+    
     feature_selection = parameters['feature_selection'].split(',')
 
     feature_size = int(parameters['feature_size'])
@@ -71,7 +71,7 @@ def main():
     iterations = int(parameters['validation_iterations'])
     normalization = parameters['normalization']
 
-    fs_keys = ['dataset_path', 'dge_path', 'swapped_label', 'drug_feature_path', 'swapped_path']
+    fs_keys = ['project','dataset_path', 'dge_path', 'swapped_label', 'drug_feature_path', 'swapped_path']
     feature_selection_parameters = {key: parameters[key] for key in fs_keys}
 
     save_fc = int(parameters['feature_counter'])
@@ -113,6 +113,16 @@ def main():
         simulation_size = int(parameters['simulation_size'])
         dataset, labels, samples = dp.simulate_data(dataset, labels, simulation_size)
 
+        
+    print("DATSET BEFORE SIZE:", dataset.shape)
+    print("LABELS BEFORE SIZE:", labels.shape)
+    
+    if int(parameters['balance']):
+        dataset, labels, samples = dp.balance_dataset(dataset, labels)
+        
+    print("DATSET AFTER SIZE:", dataset.shape)
+    print("LABELS AFTER SIZE:", labels.shape)
+    
     feature_counter = feat.build_feature_counter(dataset)
 
     print("SPLITTING DATASET BASED ON VALIDATION STYLE: " + validation)

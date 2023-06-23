@@ -46,6 +46,8 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             print("PERFORMING DGE: ")
             dataset = dge(path + fs + "/" + classifiers[0] + "/" + iteration + "/", input["x_train"].T, input["y_train"], drug_name, project_info)
 
+        elif fs == 'chi2':
+            dataset = chi_square(input["x_train"], input["y_train"], feature_size)
             # FEATURE SWAPPING EXPERIMENT
         elif fs == 'swap':
             print("PERFORMING FEATURE SWAPPING: ")
@@ -137,6 +139,9 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
         elif fs == 'swap':
             print("PERFORMING FEATURE SWAPPING: " + str(iteration) + "/" + str(total_iterations))
             dataset = from_feature_list(path, input["x_train"][iteration].T, input["y_train"][iteration], iteration, project_info)
+
+        elif fs == 'chi2':
+            dataset = chi_square(input["x_train"][iteration].T, input["y_train"][iteration], feature_size)
 
             # SELECT RANDOM FEATURES
         elif fs == 'random':
@@ -253,6 +258,20 @@ def dge(path, dataset, labels, drug_name, project_info):
     filtered = dataset[feature_set[drug_name].values]
     return filtered
 
+def chi_square(dataset, labels, feature_size):
+    from sklearn.feature_selection import chi2
+    print(dataset)
+    print(labels)
+    chi_scores, p_values = chi2(dataset, labels)
+    p_values = pd.Series(chi_scores[1],index = dataset.columns)
+    p_values.sort_values(ascending = False , inplace = True)
+    print(p_values)
+   # p_values.plot.bar()
+   # plt.show()
+
+   # sys.exit("Kill")
+    return dataset
+
 # Feature Selection: "pca"
 # Performs principal component analysis on the dataset, from the scikit-learn package
 def principal_component_analysis(dataset, datatest, feature_size):
@@ -272,7 +291,7 @@ def shapley(path, dataset, labels, feature_size, plot):
     dataset = dataset.T
     # Set xgboost model to run the shap value calculations using default parameters
     # This can be changed to other ensemble models that the shap package supports (Random Forest, etc)
-    model = xgboost.XGBClassifier(eval_metric='logloss')
+    model = xgboost.XGBClassifier(eval_metric='logloss', verbosity = 3)
     model.fit(dataset, labels)
     # initializes the shap JavaScript visualization
    # shap.initjs()
@@ -312,6 +331,7 @@ def plot_model_importance(path, feature_size, model):
     figure.set_size_inches(15, 10)
     plt.savefig(path + "/model_feature_importance.png")
     plt.clf()
+    return
 
 # Creates the feature counter dictionary for all features in the dataset
 def build_feature_counter(dataset):
@@ -322,4 +342,10 @@ def build_feature_counter(dataset):
 def add_to_feature_counter(features, counter):
     for feature in features:
         counter[feature] = counter[feature] + 1
+    return
+
+def hierarchical_clustering_heatmap(data, iteration):
+    sns.clustermap(data)
+    plt.savefig(path + "/hierarchical_clustering.png", dpi=100)
+    plt.clf()
     return

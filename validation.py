@@ -9,7 +9,9 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import accuracy_score
 #from sklearn.metrics import plot_confusion_matrix
 from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.metrics import PrecisionRecallDisplay
 from sklearn.metrics import confusion_matrix
+from sklearn.metrics import precision_recall_curve
 from sklearn.metrics import roc_curve
 import matplotlib.pyplot as plt
 from matplotlib_venn import venn2
@@ -253,6 +255,36 @@ def mlpipeline_plot_cm(result_path, mode, model, x_test, y_test, iteration):
     plt.clf()
     return
 
+def mlpipeline_plot_pr(result_path, mode, model, x_test, y_test, iteration):
+
+    # Since results are stored differently depending on validation type there are two versions of the code that plots the matrix
+    if mode == 'loo' or mode == 'cv' or mode == "cv_and_test":
+
+        precision, recall, _ = precision_recall_curve(x_test, y_test)
+        baseline = sum(x_test) / len(x_test)
+        disp = PrecisionRecallDisplay(precision=precision, recall=recall)
+        disp = PrecisionRecallDisplay.from_predictions(x_test, y_test)
+        disp = disp.plot()
+        plt.plot([0, 1], [baseline, baseline], color='orange', label= "Baseline ( AP = " + str(baseline) + " )", linestyle='--')
+        plt.ylim(0, 1)
+    else:
+        precision, recall, _ = precision_recall_curve(x_test, y_test)
+        plt.plot(0, baseline, color='orange', linestyle='--')
+        disp = PrecisionRecallDisplay(precision=precision, recall=recall)
+        disp = disp.plot()
+        ax = plt.gca()
+        baseline = sum(x_test) / len(x_test)
+        plt.ylim(0, 1)
+        print(baseline)
+        
+    if iteration == "hold_out":
+        disp.ax_.set_title('Precision-Recall Curve Iteration: ' +  iteration)
+    else:
+        disp.ax_.set_title('Precision-Recall Curve Iteration: ' +  str(iteration))
+    plt.savefig(result_path + "precision-recall.png")
+    plt.clf()
+    return
+
 def pick_top_performer(models, cv_results, holdout_results, classifiers, feature_selection, iterations):
     best_models = {}
     best_results = {}
@@ -399,6 +431,8 @@ def save_results(result_path, mode, feature_selection, classifiers, iterations, 
                 mlpipeline_plot_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/", fpr, tpr, roc, classifier, i)
                 save_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/", fpr, tpr, thresholds)
                 mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/", mode, models, true_label, pred, 0)
+                #HERE
+                mlpipeline_plot_pr(result_path + "/" + mode + "/" + i + "/" + classifier + "/", mode, models, true_label, pred_proba, 0)
 
     elif mode == "cv_and_test":
 
@@ -422,6 +456,8 @@ def save_results(result_path, mode, feature_selection, classifiers, iterations, 
                     mlpipeline_plot_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/", fpr, tpr, roc, classifier, i)
                     save_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/", fpr, tpr, thresholds)
                     mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/", "cv", models, true_label, pred, 0)
+                    #HERE
+                    mlpipeline_plot_pr(result_path + "/" + mode + "/" + i + "/" + classifier + "/", "cv", models, true_label, pred_proba, 0)
 
                 #hold_out
                 thresholds = make_thresholds(10000)
@@ -432,6 +468,8 @@ def save_results(result_path, mode, feature_selection, classifiers, iterations, 
                 mlpipeline_plot_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", fpr, tpr, roc, classifier, i)
                 save_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", fpr, tpr, thresholds)
                 mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", mode, models[i][classifier][0], results["holdout"][i][classifier]['true_label'], results["holdout"][i][classifier]['pred'], "hold_out")
+                #HERE
+                mlpipeline_plot_pr(result_path + "/" + mode + "/" + i + "/" + classifier + "/hold_out/", mode, models[i][classifier][0], results["holdout"][i][classifier]['true_label'], results["holdout"][i][classifier]['pred_prob'], "hold_out")
                 #individual_sample_report(results, datasets, i, classifier, iterations, labels, result_path + "/" + mode + "/" + i + "/" + classifier + "/")
 
     else:
@@ -442,5 +480,7 @@ def save_results(result_path, mode, feature_selection, classifiers, iterations, 
                     mlpipeline_plot_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/" + str(j) + "/", results[i][classifier][j]['fpr'], results[i][classifier][j]['tpr'],results[i][classifier][0]['roc'], classifier, i)
                     save_roc(result_path + "/" + mode + "/" + i + "/" + classifier + "/" + str(j) + "/", results[i][classifier][j]['fpr'], results[i][classifier][j]['tpr'], thresholds)
                     mlpipeline_plot_cm(result_path + "/" + mode + "/" + i + "/" + classifier + "/" + str(j) + "/", mode, models[i][classifier][j][0], datasets[i][j]["x_test"], datasets[i][j]["y_test"], j)
+                    #HERE
+                    mlpipeline_plot_pr(result_path + "/" + mode + "/" + i + "/" + classifier + "/" + str(j) + "/", mode, models[i][classifier][j][0], datasets[i][j]["x_test"], datasets[i][j]["y_test"], j)
                 individual_sample_report(results, datasets, i, classifier, iterations, labels, result_path + "/" + mode + "/" + i + "/" + classifier + "/")
     return
