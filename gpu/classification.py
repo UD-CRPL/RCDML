@@ -46,7 +46,7 @@ def get_model(classifier, hyper_opt):
     # Random Forest, scikit-learn
     if classifier == 'rf':
         #model = RandomForestClassifier()
-        model = cuRFC(output_type='numpy')
+        model = cuRFC(output_type='numpy', verbose = 3)
         # Random Search CV used for Hyperparameter optimization, sets up the operation for
         # going through the list of hyperparameters above and selects best performing model
         if hyper_opt == "random_search":
@@ -56,7 +56,7 @@ def get_model(classifier, hyper_opt):
     # Classifier: "gdb"
     # Gradient Boosting, xgboost
     elif classifier == 'gdb':
-        model = xgboost.XGBClassifier(eval_metric='logloss')
+        model = xgboost.XGBClassifier(eval_metric='logloss', tree_method= 'gpu_hist')
        # model = xgboost.XGBClassifier(eval_metric='logloss')
         # Random Search CV used for Hyperparameter optimization, sets up the operation for
         # going through the list of hyperparameters above and selects best performing model

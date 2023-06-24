@@ -214,11 +214,14 @@ def load_labels_target(url):
     
 def load_dataset_pd(url):
     dataset = pd.read_csv(url + "snp_matrix.csv", sep="\t")
+    print("FINISHED")
+    dataset = dataset.iloc[:20000]
     dataset["#CHROM-POS"] = dataset["#CHROM"].astype(str) + "-" + dataset["POS"].astype(str)
-    dataset.drop("#CHROM", axis = 1)
-    dataset.drop("POS", axis = 1)
+    dataset = dataset.drop("#CHROM", axis = 1)
+    dataset = dataset.drop("POS", axis = 1)
     dataset = dataset.set_index('#CHROM-POS')
     samples = dataset.columns
+    dataset = dataset.astype(dtype='float32')
     print(dataset)
     return dataset, samples
 
@@ -248,3 +251,25 @@ def load_labels_rnaseq(url):
 #    labels = pd.read_csv(url, sep='\t', index_col=0)
     labels = cudf.read_csv(url, sep='\t', index_col=0)
     return labels
+
+def simulate_data(dataset, labels, simulation_size):
+    
+    dataset_size = len(dataset.columns)
+    extra_samples_size = simulation_size - dataset_size
+    
+    if(extra_samples_size < 0): 
+        sys.exit("Requested simulation of data that's smaller than sample size, please change the simulation size")
+
+    extra_samples = labels.groupby("GROUP").sample(n = int(extra_samples_size / 2), random_state=1, replace = True)
+    
+    sampled_dataset = dataset[extra_samples["SID"]]
+    
+    col_names = ["simulated_sample_" + str(i) for i in range(0, extra_samples_size)]
+    
+    extra_samples["SID"] = col_names
+    sampled_dataset.columns = col_names
+    
+    dataset = pd.concat([dataset, sampled_dataset], axis=1)
+    labels = pd.concat([labels,  extra_samples], axis=0)
+
+    return dataset, labels, dataset.columns

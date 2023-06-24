@@ -11,6 +11,10 @@ def load_dataset(url, project, normalization):
     # Loads BeatAML data
     if project.lower() == "beataml":
         dataset, samples = load_dataset_beatAML(url, normalization)
+    elif project.lower() == "target":
+        dataset, samples = load_dataset_target(url, normalization)
+    elif project.lower() == "pd":
+        dataset, samples = load_dataset_pd(url)
     else:
         dataset, samples = load_dataset_rnaseq(url)
     return dataset, samples
@@ -20,6 +24,10 @@ def load_labels(url, project, drug_name):
     # Loads BeatAML data
     if project.lower() == "beataml":
         labels = load_labels_beatAML(url, drug_name)
+    elif project.lower() == "target":
+        labels = load_labels_target(url)
+    elif project.lower() == "pd":
+        labels = load_labels_pd(url)        
     else:
         labels = load_labels_rnaseq(url)
     return labels
@@ -90,6 +98,12 @@ def auc_to_binary(value, q1, q3):
     else:
         return -1
 
+def vital_to_binary(value):
+    if value == "Alive":
+        return 1 
+    else:
+        return 0
+    
 ### PROJECT DATASETS
 
 ## Loads the RNA Sequence Data Matrix from the BeatAML Project
@@ -166,6 +180,58 @@ def load_labels_beatAML(url, drug_name):
         sys.exit("ERROR beatAML Project: Labels requested not available. List of available labels are ['UNC2025A', 'original']")
     return labels
 
+
+def load_dataset_target(url, normalization):
+    if normalization == "cpm":
+        dataset = pd.read_csv(url + "genesdf.txt", sep="\t")
+    
+        dataset = dataset.drop("Symbol", axis = 1)
+   # dataset.to_csv(url + "genesdf.txt", sep="\t")
+        dataset = dataset.set_index('Gene')
+        samples = dataset.columns
+    elif normalization == "rpkm":
+        import re
+        dataset = pd.read_csv(url + "TARGET_NBM_AML_QuantileNormalized_RPKM.txt", sep="\t")
+        cols = dataset.columns
+        pattern = "TARGET-[0-9][0-9]-(...*)-[0-9][0-9]A-[0-9][0-9]R"
+        cols = {string: re.search(pattern, string)[1] for string in cols[2:]}
+        dataset = dataset.rename(columns=cols)
+        dataset = dataset.drop("gene_name", axis = 1)
+        dataset = dataset.set_index("gene_id")
+        print(dataset)
+        samples = dataset.columns
+      #  sys.exit("Error message")
+    else:
+        sys.exit("ERROR BeatAML Project: Dataset requested not available. List of available datasets are ['cpm', 'rpkm']")
+    
+    return dataset, samples
+
+def load_labels_target(url):
+    labels = pd.read_csv(url + "target.csv")
+    labels['GROUP'] = labels['GROUP'].apply(lambda x: vital_to_binary(x))
+    print(labels)
+    return labels
+    
+def load_dataset_pd(url):
+    dataset = pd.read_csv(url + "snp_matrix.csv", sep="\t")
+    print("FINISHED")
+    dataset = dataset.iloc[:20000]
+    dataset["#CHROM-POS"] = dataset["#CHROM"].astype(str) + "-" + dataset["POS"].astype(str)
+    dataset = dataset.drop("#CHROM", axis = 1)
+    dataset = dataset.drop("POS", axis = 1)
+    dataset = dataset.set_index('#CHROM-POS')
+    samples = dataset.columns
+    dataset = dataset.astype(dtype='float32')
+    print(dataset)
+    return dataset, samples
+
+def load_labels_pd(url):
+    labels = pd.read_csv(url + "00-PD-TreatmentCodeTable-ALL153.csv", usecols = ["SID", "GROUP"])
+    labels['GROUP'] = labels['GROUP'].apply(lambda x: group_to_binary(x))
+    labels['SID'] = labels['SID'].apply(lambda x: x.replace('.','-'))
+    print(labels)
+    return labels
+	
 # Creates new directory and subdirectories if given a path and the directory does not exist
 # Used extensively to save results
 def make_result_dir(path):
@@ -185,3 +251,25 @@ def load_labels_rnaseq(url):
 #    labels = pd.read_csv(url, sep='\t', index_col=0)
     labels = cudf.read_csv(url, sep='\t', index_col=0)
     return labels
+
+def simulate_data(dataset, labels, simulation_size):
+    
+    dataset_size = len(dataset.columns)
+    extra_samples_size = simulation_size - dataset_size
+    
+    if(extra_samples_size < 0): 
+        sys.exit("Requested simulation of data that's smaller than sample size, please change the simulation size")
+
+    extra_samples = labels.groupby("GROUP").sample(n = int(extra_samples_size / 2), random_state=1, replace = True)
+    
+    sampled_dataset = dataset[extra_samples["SID"]]
+    
+    col_names = ["simulated_sample_" + str(i) for i in range(0, extra_samples_size)]
+    
+    extra_samples["SID"] = col_names
+    sampled_dataset.columns = col_names
+    
+    dataset = pd.concat([dataset, sampled_dataset], axis=1)
+    labels = pd.concat([labels,  extra_samples], axis=0)
+
+    return dataset, labels, dataset.columns
