@@ -86,11 +86,20 @@ def main():
     
     gpu = int(parameters['gpu'])
     
+    cluster = None
+    client = None
+    
     if gpu == 1:
         import gpu.data_preprocess as dp
         import gpu.feature_selection as feat
         import gpu.validation as val
         import gpu.classification as classification
+        from dask_cuda import LocalCUDACluster
+        from dask.distributed import Client
+        cluster = LocalCUDACluster()
+        client = Client(cluster)
+        feature_selection_parameters['cluster'] = client
+ 
     else:
         import data_preprocess as dp
         import feature_selection as feat

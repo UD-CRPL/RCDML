@@ -36,10 +36,11 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             gpu_x = cudf.from_pandas(input["x_train"])
             gpu_y = cudf.from_pandas(input["y_train"])
             copy = time.time()
-            dataset = shapley(path + fs + "/" + classifiers[0] + "/" + str(iteration), gpu_x, gpu_y, feature_size, 1)
-            end = time.time()
             print("TIME TO COPY ARRAYS: ", copy - start)
-            print("TIME TO RUN SHAPLEY: ", end - start)
+            dataset = shapley(path + fs + "/" + classifiers[0] + "/" + str(iteration), gpu_x, gpu_y, feature_size, 1, project_info['cluster'])
+            end = time.time()
+            print("TIME TO RUN SHAPLEY: ", end - copy)
+            print("TOTAL TIME: ", end - start)
             #dataset = shapley(path + fs + "/" + classifiers[0] + "/" + iteration, input["x_train"], input["y_train"], feature_size, 1)
 
             # PRINCIPAL COMPONENT ANALYSIS
@@ -128,10 +129,11 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             gpu_x = cudf.from_pandas(input["x_train"][iteration])
             gpu_y = cudf.from_pandas(input["y_train"][iteration])
             copy = time.time()
-            dataset = shapley(path + fs + "/" + classifiers[0] + "/" + str(iteration), gpu_x, gpu_y, feature_size, 1)
-            end = time.time()
             print("TIME TO COPY ARRAYS: ", copy - start)
-            print("TIME TO RUN SHAPLEY: ", end - start)
+            dataset = shapley(path + fs + "/" + classifiers[0] + "/" + str(iteration), gpu_x, gpu_y, feature_size, 1, project_info['cluster'])
+            end = time.time()
+            print("TIME TO RUN SHAPLEY: ", end - copy)
+            print("TOTAL: ", end - start)
             #dataset = shapley(path + fs + "/" + classifiers[0] + "/" + str(iteration), input["x_train"][iteration], input["y_train"][iteration], feature_size, 1)
 
             # PRINCIPAL COMPONENT ANALYSIS
@@ -279,7 +281,11 @@ def principal_component_analysis(dataset, datatest, feature_size):
 
 # Feature Selection: "shap"
 # Performs the shapley value feature selection technique discussed in the paper
-def shapley(path, dataset, labels, feature_size, plot):
+def shapley(path, dataset, labels, feature_size, plot, client):
+    import dask_cudf 
+    
+ #   cluster = LocalCUDACluster()
+#    client = Client(cluster)
     dataset = dataset.T
    # dataset = cudf.from_pandas(dataset)
   #  labels = cudf.from_pandas(dataset)
@@ -290,15 +296,18 @@ def shapley(path, dataset, labels, feature_size, plot):
   #  model.fit(dataset, labels)
     
    # params = {'tree_method': 'gpu_hist', 'eval_metric' : 'logloss', 'max_depth': 3, 'learning_rate': 0.1}
-    params = {'tree_method': 'gpu_hist', 'max_depth': 3, 'learning_rate': 0.1, 'verbosity' : 0}
-    dtrain = xgboost.DMatrix(dataset, labels)
-    model = xgboost.train(params, dtrain)
-    model.set_param({"predictor": "gpu_predictor"})
+    x = dask_cudf.from_cudf(dataset, npartitions=8)
+    y = dask_cudf.from_cudf(labels, npartitions=8)
+    params = {'tree_method': 'gpu_hist', 'max_depth': 3, 'learning_rate': 0.1, 'verbosity' : 2}
+    dtrain = xgboost.dask.DaskDMatrix(client, x, y)
+    model = xgboost.dask.train(client, params, dtrain)
+   # print(model)
+    model['booster'].set_param({"predictor": "gpu_predictor"})
     
     # initializes the shap JavaScript visualization
    # shap.initjs()
     # Calculates the shap value contributions for
-    shap_values = shap.TreeExplainer(model).shap_values(dataset)
+    shap_values = shap.TreeExplainer(model['booster']).shap_values(dataset)
     # Removes direction to the shap value marginal contribution by taking the absolute value
     # We only care about magnitude to select features
     distribution = np.absolute(shap_values)
