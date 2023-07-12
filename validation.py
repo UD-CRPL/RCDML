@@ -46,23 +46,19 @@ def split_dataset(mode, dataset, labels, split, iterations, balance, unbalance, 
         print("DATASET BEFORE SIZE:", dataset["x_train"][i].shape)
         print("LABELS BEFORE SIZE:", dataset["y_train"][i].shape)
 
-        print(dataset["y_train"][i])
-
-
         if unbalance:
     #      import balance as b
             temp_data, temp_labels, samples = b.unbalance_dataset(dataset["x_train"][i], dataset["y_train"][i], b.ratio_multiplier)
-        
-        #if int(parameters['balance']):
+            dataset["x_train"][i] = temp_data
+            dataset["y_train"][i] = temp_labels        
+            #if int(parameters['balance']):
         if balance:
             temp_data, temp_labels, samples = b.balance_dataset(temp_data, temp_labels, balance_teq)
-
+            dataset["x_train"][i] = temp_data
+            dataset["y_train"][i] = temp_labels
             
-        print("DATASET AFTER SIZE:", temp_data.shape)
-        print("LABELS AFTER SIZE:", temp_labels.shape)
- 
-        dataset["x_train"][i] = temp_data
-        dataset["y_train"][i] = temp_labels
+        print("DATASET AFTER SIZE:", dataset["x_train"][i].shape)
+        print("LABELS AFTER SIZE:", dataset["y_train"][i].shape)
 
 
     return dataset, iterations
