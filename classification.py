@@ -81,7 +81,7 @@ def get_model(classifier, hyper_opt):
            # from
             model = RandomizedSearchCV(model, parameters, n_iter=30,
                                         n_jobs=-1, verbose=10, cv=5,
-                                        scoring='roc_auc', refit=True, random_state=42)
+                                        scoring='precision', refit=True, random_state=42)
         elif hyper_opt == "grid_search":
             model = GridSearchCV(model, parameters, n_jobs=-1, verbose=10, cv=5,
                                         scoring='precision', refit=True)

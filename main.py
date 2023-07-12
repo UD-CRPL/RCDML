@@ -112,22 +112,12 @@ def main():
     if parameters['simulation_size'] != 'none':
         simulation_size = int(parameters['simulation_size'])
         dataset, labels, samples = dp.simulate_data(dataset, labels, simulation_size)
-
-        
-    print("DATSET BEFORE SIZE:", dataset.shape)
-    print("LABELS BEFORE SIZE:", labels.shape)
-    
-    if int(parameters['balance']):
-        dataset, labels, samples = dp.balance_dataset(dataset, labels)
-        
-    print("DATSET AFTER SIZE:", dataset.shape)
-    print("LABELS AFTER SIZE:", labels.shape)
     
     feature_counter = feat.build_feature_counter(dataset)
 
     print("SPLITTING DATASET BASED ON VALIDATION STYLE: " + validation)
 
-    datasets, iterations = val.split_dataset(validation, dataset, labels, train_set_split, iterations)
+    datasets, iterations = val.split_dataset(validation, dataset, labels, train_set_split, iterations, int(parameters['balance']), int(parameters['unbalance']), parameters['balance_technique'])
 
     if validation == "cv_and_test":
 

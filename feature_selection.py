@@ -48,6 +48,9 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
 
         elif fs == 'chi2':
             dataset = chi_square(input["x_train"], input["y_train"], feature_size)
+
+        elif fs == 'rae':
+            dataset = rare_allele_enrichment(path, input["x_train"], input["y_train"], 0.05, feature_size)
             # FEATURE SWAPPING EXPERIMENT
         elif fs == 'swap':
             print("PERFORMING FEATURE SWAPPING: ")
@@ -80,6 +83,9 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
             dict = {"x_train": dataset.T, "x_test": datatest.T,  "y_train": input["y_train"], "y_test": input["y_test"]}
         else:
             # Filter through the dataset to save only the data rows that correspond to the features selecteed
+            print("WHATS UP")
+            print(dataset.shape)
+            print(input["y_train"].shape)
             features = dataset.columns
             dict = {"x_train": input["x_train"].loc[input["x_train"].index.isin(features)], "x_test": input["x_test"].iloc[input["x_test"].index.isin(features)],  "y_train": input["y_train"], "y_test": input["y_test"]}
 
@@ -142,7 +148,8 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
 
         elif fs == 'chi2':
             dataset = chi_square(input["x_train"][iteration].T, input["y_train"][iteration], feature_size)
-
+        elif fs == "rae":
+             dataset = rare_allele_enrichment(path, input["x_train"][iteration], input["y_train"][iteration], 0.05, feature_size)
             # SELECT RANDOM FEATURES
         elif fs == 'random':
             print("SELECTING RANDOM FEATURES: " + str(iteration) + "/" + str(total_iterations))
@@ -171,6 +178,10 @@ def feature_selection(path, fs, iteration, input, labels, feature_size, classifi
         else:
             # Filter through the dataset to save only the data rows that correspond to the features selecteed
             features = dataset.columns
+            print(dataset.shape)
+            print(input["y_train"][iteration].shape)
+            print(input["x_train"][iteration].loc[input["x_train"][iteration].index.isin(features)].shape)
+            print(input["x_train"][iteration].loc[input["x_train"][iteration].index.isin(features)])
             dict = {"x_train": input["x_train"][iteration].loc[input["x_train"][iteration].index.isin(features)], "x_test": input["x_test"][iteration].iloc[input["x_test"][iteration].index.isin(features)],  "y_train": input["y_train"][iteration], "y_test": input["y_test"][iteration]}
 
             # adds to the counter for each feature selected
@@ -275,15 +286,88 @@ def chi_square(dataset, labels, feature_size):
 # Feature Selection: "pca"
 # Performs principal component analysis on the dataset, from the scikit-learn package
 def principal_component_analysis(dataset, datatest, feature_size):
-    pca = sklearn.decomposition.PCA()
-    # This is the training data
+    import time
+    start = time.time()
+    pca = sklearn.decomposition.PCA(n_components=30)
+      # This is the training data
     X_pca = pca.fit_transform(dataset.T)
+    end = time.time()
+    print("Finished PCA: " + str(end - start))
     # This is the test data
     test_pca = pca.transform(datatest.T)
+    end_test =time.time()
+    print("Finished test PCA: " + str(end_test - end))
     # Selects the "feature_size" components from the PCA results and outputs that as the new dataset
     X_selected = X_pca[:,:feature_size]
     test_selected = test_pca[:,:feature_size]
     return X_selected, test_selected
+
+def rare_allele_enrichment(path, dataset, labels, pvalue_threshold, feature_size):
+
+    control_labels = labels[labels == 0]
+    disease_labels = labels[labels == 1]
+    control_samples = control_labels.index.to_numpy()
+    disease_samples = disease_labels.index.to_numpy()
+
+    control_dataset = dataset[[c for c in dataset.columns if c in control_samples]]
+    disease_dataset = dataset[[c for c in dataset.columns if c in disease_samples]]
+
+    print("Counting variant occurance for each feature: ")
+    tcount0 = time.time()
+    control_size = control_dataset.apply(pd.value_counts, axis = 1)
+    disease_size = disease_dataset.apply(pd.value_counts, axis = 1)
+   # control_size = control_dataset.T.value_counts()
+  #  print(control_size[0])
+    tcount1 = time.time()
+    print("Count took: " + str(tcount1 - tcount0))
+
+  #  sys.exit("EXIT")
+    
+    control_size = control_size.fillna(0)
+    disease_size = disease_size.fillna(0)
+
+    tables = []
+
+    tcont0 = time.time()
+    for i, feature in enumerate(control_dataset.index):
+    #    if i % 500 == 0:
+   #         print("Building contingency table for feature: " + str(i) + "/" + str(len(control_dataset.index)), flush = True)
+        variant_control_yes = control_size.loc[feature].iloc[0]
+        variant_control_no = control_size.loc[feature].iloc[1] + control_size.loc[feature].iloc[2]
+        variant_disease_yes = disease_size.loc[feature].iloc[1] + disease_size.loc[feature].iloc[2]
+        variant_disease_no = disease_size.loc[feature].iloc[0]
+
+        control = [variant_control_no, variant_control_yes]
+        disease = [variant_disease_yes, variant_disease_no]
+
+        contigency_table = np.array([control, disease])
+        tables.append(contigency_table)
+    tcont1 = time.time()
+    print("Building the contigency tables took: " + str(tcont1 - tcont0))
+    odd_ratios = []
+    pvalues = []
+    tfish0 = time.time()
+    import scipy
+    for i, table in enumerate(tables):
+  #      if i % 300 == 0:
+ #           print("Performing Fisher's exact test for feature: " + str(i) + "/" + str(len(tables)), flush = True)
+        oddsratio, pvalue = scipy.stats.fisher_exact(table)
+        odd_ratios.append(oddsratio)
+        pvalues.append(pvalue)
+    tfish1 = time.time()
+    print("Fisher's exact test took: " + str(tfish1 - tfish0))
+    temp = dataset.copy()
+    temp['pvalues'] = pvalues
+    temp = temp[temp['pvalues'] > pvalue_threshold]
+    selected_features = temp.nsmallest(feature_size, 'pvalues')
+    pvalue_threshold = selected_features['pvalues'].iloc[0]
+    selected_features = selected_features.drop('pvalues', axis = 1)
+    temp = temp.drop('pvalues', axis = 1)
+    print(temp)
+    selected_features = selected_features.T
+    print(selected_features)
+    return selected_features
+
 
 # Feature Selection: "shap"
 # Performs the shapley value feature selection technique discussed in the paper
@@ -292,7 +376,11 @@ def shapley(path, dataset, labels, feature_size, plot):
     # Set xgboost model to run the shap value calculations using default parameters
     # This can be changed to other ensemble models that the shap package supports (Random Forest, etc)
     model = xgboost.XGBClassifier(eval_metric='logloss', verbosity = 3)
+    import time 
+    start = time.time()
     model.fit(dataset, labels)
+    end = time.time()
+    print("Xgboost training finished " + str(end - start))
     # initializes the shap JavaScript visualization
    # shap.initjs()
     # Calculates the shap value contributions for

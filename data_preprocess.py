@@ -186,7 +186,8 @@ def load_labels_target(url):
     return labels
     
 def load_dataset_pd(url):
-    dataset = pd.read_csv(url + "snp_matrix.csv", sep="\t")
+    dataset = pd.read_csv(url + "methylation_filter_dataset.csv", sep="\t")
+    dataset = dataset.iloc[:1000]
     dataset["#CHROM-POS"] = dataset["#CHROM"].astype(str) + "-" + dataset["POS"].astype(str)
     dataset.drop("#CHROM", axis = 1)
     dataset.drop("POS", axis = 1)
