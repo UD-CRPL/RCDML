@@ -20,7 +20,8 @@ import data_preprocess as dp
 import sys
 
 # Handler that selects the correct validation and dataset splitting mode that corresponds to the configuration parameters
-def split_dataset(mode, dataset, labels, split, iterations):
+def split_dataset(mode, dataset, labels, split, iterations, balance, unbalance, balance_teq):
+
     # Cross-Validation
     if mode == 'cv':
         dataset, iterations = cross_validation(dataset, labels, iterations)
@@ -34,6 +35,36 @@ def split_dataset(mode, dataset, labels, split, iterations):
         dataset, iterations = cv_and_test(dataset, labels, split, iterations)
     else:
         sys.exit("ERROR: Unrecognized validation technique in configuration file")
+
+    print(dataset['y_train'][0])
+
+
+    import balance as b
+
+    for i in range(0, iterations):
+
+        print("DATASET BEFORE SIZE:", dataset["x_train"][i].shape)
+        print("LABELS BEFORE SIZE:", dataset["y_train"][i].shape)
+
+        print(dataset["y_train"][i])
+
+
+        if unbalance:
+    #      import balance as b
+            temp_data, temp_labels, samples = b.unbalance_dataset(dataset["x_train"][i], dataset["y_train"][i], b.ratio_multiplier)
+        
+        #if int(parameters['balance']):
+        if balance:
+            temp_data, temp_labels, samples = b.balance_dataset(temp_data, temp_labels, balance_teq)
+
+            
+        print("DATASET AFTER SIZE:", temp_data.shape)
+        print("LABELS AFTER SIZE:", temp_labels.shape)
+ 
+        dataset["x_train"][i] = temp_data
+        dataset["y_train"][i] = temp_labels
+
+
     return dataset, iterations
 
 # Validation mode: "cv_and_test"
